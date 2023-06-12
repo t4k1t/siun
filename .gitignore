@@ -1,0 +1,16 @@
+# python
+__pycache__
+*.py[cod]
+build
+dist
+*.egg-info
+.cache
+
+# testing
+htmlcov
+_coverage
+.coverage
+.tox/*
+
+# documentation
+docs/_build/*
