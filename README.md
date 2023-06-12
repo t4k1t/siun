@@ -1,8 +1,5 @@
 # pacup
 
-[![PyPI - Version](https://img.shields.io/pypi/v/pacup.svg)](https://pypi.org/project/pacup)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pacup.svg)](https://pypi.org/project/pacup)
-
 -----
 
 **Table of Contents**
