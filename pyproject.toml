@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pacup"
+name = "siun"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
@@ -27,12 +27,12 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Documentation = "https://github.com/unknown/pacup#readme"
-Issues = "https://github.com/unknown/pacup/issues"
-Source = "https://github.com/unknown/pacup"
+Documentation = "https://github.com/unknown/siun#readme"
+Issues = "https://github.com/unknown/siun/issues"
+Source = "https://github.com/unknown/siun"
 
 [tool.hatch.version]
-path = "src/pacup/__about__.py"
+path = "src/siun/__about__.py"
 
 [tool.hatch.envs.default]
 dependencies = [
@@ -62,7 +62,7 @@ dependencies = [
   "ruff>=0.0.243",
 ]
 [tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:src/pacup tests}"
+typing = "mypy --install-types --non-interactive {args:src/siun tests}"
 style = [
   "ruff {args:.}",
   "black --check --diff {args:.}",
@@ -128,7 +128,7 @@ unfixable = [
 ]
 
 [tool.ruff.isort]
-known-first-party = ["pacup"]
+known-first-party = ["siun"]
 
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "all"
@@ -138,16 +138,16 @@ ban-relative-imports = "all"
 "tests/**/*" = ["PLR2004", "S101", "TID252"]
 
 [tool.coverage.run]
-source_pkgs = ["pacup", "tests"]
+source_pkgs = ["siun", "tests"]
 branch = true
 parallel = true
 omit = [
-  "src/pacup/__about__.py",
+  "src/siun/__about__.py",
 ]
 
 [tool.coverage.paths]
-pacup = ["src/pacup", "*/pacup/src/pacup"]
-tests = ["tests", "*/pacup/tests"]
+siun = ["src/siun", "*/siun/src/siun"]
+tests = ["tests", "*/siun/tests"]
 
 [tool.coverage.report]
 exclude_lines = [

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""pacup - check for pacman updates."""
+"""siun - check for pacman updates."""
 
 import datetime
 import json
@@ -132,14 +132,14 @@ def _get_available_updates():
 
 def _persist_state(updates: Updates):
     tempdir = tempfile.gettempdir()
-    update_file_path = Path("/".join([tempdir, "pacup-state.json"]))
+    update_file_path = Path("/".join([tempdir, "siun-state.json"]))
     with open(update_file_path, "w+") as update_file:
         json.dump(asdict(updates.state), update_file, cls=StateEncoder)
 
 
 def _read_state():
     tempdir = tempfile.gettempdir()
-    update_file_path = Path("/".join([tempdir, "pacup-state.json"]))
+    update_file_path = Path("/".join([tempdir, "siun-state.json"]))
     if not update_file_path.exists():
         return None
 

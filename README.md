@@ -1,4 +1,7 @@
-# pacup
+# siun
+
+[![PyPI - Version](https://img.shields.io/pypi/v/siun.svg)](https://pypi.org/project/siun)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/siun.svg)](https://pypi.org/project/siun)
 
 -----
 
@@ -10,9 +13,13 @@
 ## Installation
 
 ```console
-pip install pacup
+pip install siun
 ```
 
 ## License
 
-`pacup` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+`siun` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+
+## Name
+
+`siun` stands for, and tries to answer, the question "Should I upgrade now?".
