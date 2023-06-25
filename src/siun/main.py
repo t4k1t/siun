@@ -131,6 +131,7 @@ def _get_available_updates():
 
 
 def _persist_state(updates: Updates):
+    click.echo("writing new state")
     tempdir = tempfile.gettempdir()
     update_file_path = Path("/".join([tempdir, "siun-state.json"]))
     with open(update_file_path, "w+") as update_file:
@@ -138,6 +139,7 @@ def _persist_state(updates: Updates):
 
 
 def _read_state():
+    click.echo("reading existing state")
     tempdir = tempfile.gettempdir()
     update_file_path = Path("/".join([tempdir, "siun-state.json"]))
     if not update_file_path.exists():
@@ -152,11 +154,10 @@ def main():
     thresholds = {0: "OK", 1: "AVAILABLE_UPDATES", 2: "CRITICAL_UPDATES"}
     updates = Updates(thresholds=thresholds)
     existing_state = _read_state()
-    if existing_state:
-        click.echo("found existing state")
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    if existing_state and existing_state["last_update"] > (now - datetime.timedelta(hours=1)):
         updates.update(available_updates=existing_state["available_updates"])
     else:
-        click.echo("writing new state")
         updates.update(available_updates=_get_available_updates())
         _persist_state(updates)
 
