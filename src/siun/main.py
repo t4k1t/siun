@@ -11,19 +11,26 @@ import tempfile
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Optional
 
 import click
+
+CMD_AVAILABLE = "pacman -Quq"
+CMD_SYNC = "pacman -Sy"
+CRITICAL_PATTERN = r"^archlinux-keyring$|^linux$|^firefox$|^pacman.*$"
 
 
 class StateText(Enum):
     OK = "Ok"
     AVAILABLE_UPDATES = "Updates available"
+    WARNING_UPDATES = "Updates recommended"
     CRITICAL_UPDATES = "Updates required"
 
 
 class StateColor(Enum):
     OK = "green"
-    AVAILABLE_UPDATES = "yellow"
+    AVAILABLE_UPDATES = "blue"
+    WARNING_UPDATES = "yellow"
     CRITICAL_UPDATES = "red"
 
 
@@ -72,26 +79,31 @@ class Updates:
 
     def __init__(self, thresholds: dict):
         self.count_threshold = 10
-        self.critical_pattern = r"^linux.*|^firefox.*"
+        self.critical_pattern = CRITICAL_PATTERN
         self.thresholds = thresholds
         self.state = UpdateState(available_updates=[])
 
-    def update(self, available_updates: list = None):
+    def update(self, available_updates: Optional[list] = None):
         self.state.score = 0
         if available_updates is None:
             available_updates = []
         self.state.available_updates = available_updates
         self.state.count = len(available_updates)
 
+        if self.state.count > 0:
+            self.state.score += 1
         if self._criteria_count():
-            click.echo("count criterion matched")
             self.state.score += 1
         if self._criteria_critical():
-            click.echo("critical update criterion matched")
             self.state.score += 1
 
-        self.state.text_value = StateText[self.thresholds[self.state.score]]
-        self.state.color = StateColor[self.thresholds[self.state.score]]
+        last_threshold = list(self.thresholds.keys())[-1]
+        if self.state.score >= last_threshold:
+            self.state.text_value = StateText[self.thresholds[last_threshold]]
+            self.state.color = StateColor[self.thresholds[last_threshold]]
+        else:
+            self.state.text_value = StateText[self.thresholds[self.state.score]]
+            self.state.color = StateColor[self.thresholds[self.state.score]]
         self.state.last_update = datetime.datetime.now(tz=datetime.timezone.utc)
 
     def _criteria_count(self):
@@ -122,16 +134,23 @@ def _sync_packages():
 
 
 def _get_available_updates():
+    cmd = ["pacman", "-Qu"]
+    if CMD_AVAILABLE:
+        cmd = CMD_AVAILABLE.split(" ")
     try:
-        available_updates_run = subprocess.run(["pacman", "-Qu"], check=True, capture_output=True, text=True)  # noqa
+        available_updates_run = subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa
         return available_updates_run.stdout.splitlines()
+
     except subprocess.CalledProcessError as error:
+        if error.returncode == 1 and not error.stdout and not error.stderr:
+            # pacman exits with code 1 if there are no updates
+            return []
+
         click.echo(f"Failed to query available updates: {error.stderr}", err=True, nl=False)
         sys.exit(1)
 
 
 def _persist_state(updates: Updates):
-    click.echo("writing new state")
     tempdir = tempfile.gettempdir()
     update_file_path = Path("/".join([tempdir, "siun-state.json"]))
     with open(update_file_path, "w+") as update_file:
@@ -139,7 +158,6 @@ def _persist_state(updates: Updates):
 
 
 def _read_state():
-    click.echo("reading existing state")
     tempdir = tempfile.gettempdir()
     update_file_path = Path("/".join([tempdir, "siun-state.json"]))
     if not update_file_path.exists():
@@ -149,26 +167,72 @@ def _read_state():
         return json.load(update_file, cls=StateDecoder)
 
 
-def main():
+def format_plain(state: UpdateState):
+    return state.text_value.value, {}
+
+
+def format_fancy(state: UpdateState):
+    return state.text_value.value, {"fg": state.color.value}
+
+
+def format_json(state: UpdateState):
+    state_dict = {"count": state.count, "text_value": state.text_value.value, "score": state.score}
+    return json.dumps(state_dict), {}
+
+
+def format_i3status(state: UpdateState):
+    i3status_state_map = {
+        "OK": "Idle",
+        "AVAILABLE_UPDATES": "Idle",
+        "WARNING_UPDATES": "Warning",
+        "CRITICAL_UPDATES": "Critical",
+    }
+    i3status_text_map = {
+        "OK": "",
+        "AVAILABLE_UPDATES": "",
+        "WARNING_UPDATES": "Updates recommended",
+        "CRITICAL_UPDATES": "Updates required",
+    }
+    i3status_data = {
+        "icon": "archive",
+        "state": i3status_state_map[state.text_value.name],
+        "text": i3status_text_map[state.text_value.name],
+    }
+    return json.dumps(i3status_data), {}
+
+
+def main(*, output_format: str):
     """Main function."""
-    thresholds = {0: "OK", 1: "AVAILABLE_UPDATES", 2: "CRITICAL_UPDATES"}
+    thresholds = {0: "OK", 1: "AVAILABLE_UPDATES", 2: "WARNING_UPDATES", 3: "CRITICAL_UPDATES"}
     updates = Updates(thresholds=thresholds)
     existing_state = _read_state()
     now = datetime.datetime.now(tz=datetime.timezone.utc)
-    if existing_state and existing_state["last_update"] > (now - datetime.timedelta(hours=1)):
+    if existing_state and (existing_state["last_update"] > (now - datetime.timedelta(minutes=30))):
         updates.update(available_updates=existing_state["available_updates"])
     else:
         updates.update(available_updates=_get_available_updates())
         _persist_state(updates)
 
-    # TODO: default output should just be ok|warning|critical
-    # TODO: add flag to also add count to output
-    # TODO: add flag to also add matched criteria
-    click.secho(
-        f"{updates.state.text_value.value}: {updates.state.count}",
-        fg=updates.state.color.value,
-    )
+    output = ""
+    output_kwargs = {}
+    if output_format == "plain":
+        output, output_kwargs = format_plain(updates.state)
+    elif output_format == "fancy":
+        output, output_kwargs = format_fancy(updates.state)
+    elif output_format == "json":
+        output, output_kwargs = format_json(updates.state)
+    elif output_format == "i3status":
+        output, output_kwargs = format_i3status(updates.state)
+    click.secho(output, **output_kwargs)
+
+
+@click.command()
+@click.option(
+    "--output-format", default="plain", type=click.Choice(["plain", "fancy", "json", "i3status"], case_sensitive=False)
+)
+def cli(output_format):
+    main(output_format=output_format)
 
 
 if __name__ == "__main__":
-    main()
+    cli()
