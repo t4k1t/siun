@@ -96,6 +96,7 @@ select = [
   "F",
   "FBT",
   "I",
+  "I001",
   "ICN",
   "ISC",
   "N",
