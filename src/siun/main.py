@@ -101,9 +101,9 @@ class Updates:
             self.state.score += 1
         # Rest of criteria
         if self._criteria_count():
-            self.state.score += 1
+            self.state.score += self.criteria_settings["count_weight"]
         if self._criteria_critical():
-            self.state.score += 1
+            self.state.score += self.criteria_settings["critical_weight"]
 
         last_threshold = list(self.thresholds.keys())[-1]
         if self.state.score >= last_threshold:
@@ -222,12 +222,17 @@ def main(*, output_format: str):
             "count_weight": 1,
             "lastupdate_age_seconds": 604800,  # 7 days
             "lastupdate_weight": 1,
-        }
+        },
     }
     user_config = load_config()
     config = update_nested(config, user_config)
 
-    thresholds = {0: "OK", 1: "AVAILABLE_UPDATES", 2: "WARNING_UPDATES", 3: "CRITICAL_UPDATES"}
+    thresholds = {
+        0: StateText.OK.name,
+        1: StateText.AVAILABLE_UPDATES.name,
+        2: StateText.WARNING_UPDATES.name,
+        3: StateText.CRITICAL_UPDATES.name,
+    }
 
     updates = Updates(thresholds=thresholds, criteria_settings=config["criteria"])
     existing_state = _read_state()
