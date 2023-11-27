@@ -24,7 +24,14 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
+dependencies = ["click"]
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "hatch",
+  "isort"
+]
 
 [project.urls]
 Documentation = "https://github.com/unknown/siun#readme"

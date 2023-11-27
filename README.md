@@ -16,6 +16,12 @@
 pip install siun
 ```
 
+### Install dev env
+
+```console
+pip install -e .[dev]
+```
+
 ## License
 
 `siun` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.

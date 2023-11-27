@@ -4,124 +4,17 @@
 
 import collections.abc
 import datetime
-import json
-import re
 import subprocess
 import sys
-import tempfile
-from dataclasses import asdict, dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import click
 import tomllib
 
+from siun.formatting import Formatter, OutputFormat
+from siun.state import StateText, Updates
+
 CMD_AVAILABLE = "pacman -Quq"
-
-
-class StateText(Enum):
-    OK = "Ok"
-    AVAILABLE_UPDATES = "Updates available"
-    WARNING_UPDATES = "Updates recommended"
-    CRITICAL_UPDATES = "Updates required"
-
-
-class StateColor(Enum):
-    OK = "green"
-    AVAILABLE_UPDATES = "blue"
-    WARNING_UPDATES = "yellow"
-    CRITICAL_UPDATES = "red"
-
-
-class OutputFormat(Enum):
-    PLAIN = "plain"
-    FANCY = "fancy"
-    JSON = "json"
-    I3STATUS = "i3status"
-
-
-@dataclass
-class UpdateState:
-    available_updates: list
-    score: int = 0
-    count: int = 0
-    text_value: StateText = StateText.OK
-    color: StateColor = StateColor.OK
-    last_update: datetime or None = None
-
-
-class StateEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Enum):
-            return {"py-type": type(obj).__name__, "value": obj.value}
-        if isinstance(obj, datetime.datetime):
-            return {"py-type": type(obj).__name__, "value": obj.isoformat()}
-
-        return json.JSONEncoder.default(self, obj)
-
-
-class StateDecoder(json.JSONDecoder):
-    def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, *args, **kwargs, object_hook=self.object_hook)
-
-    def object_hook(self, obj):
-        pytype = obj.get("py-type")
-        if not pytype:
-            return obj
-
-        if pytype == "datetime":
-            return datetime.datetime.fromisoformat(obj["value"])
-        elif pytype in [StateText.__name__, StateColor.__name__]:
-            t = globals()[pytype]
-            return t(obj["value"])
-        else:
-            raise NotImplementedError
-
-        return obj
-
-
-class Updates:
-    __slots__ = ("state", "thresholds", "criteria_settings")
-
-    def __init__(self, thresholds: dict, criteria_settings: dict):
-        self.thresholds = thresholds
-        self.state = UpdateState(available_updates=[])
-        self.criteria_settings = criteria_settings
-
-    def update(self, available_updates: Optional[list] = None):
-        self.state.score = 0
-        if available_updates is None:
-            available_updates = []
-        self.state.available_updates = available_updates
-        self.state.count = len(available_updates)
-
-        # Are there any updates?
-        if self.state.count > 0:
-            self.state.score += 1
-        # Rest of criteria
-        if self._criteria_count():
-            self.state.score += self.criteria_settings["count_weight"]
-        if self._criteria_critical():
-            self.state.score += self.criteria_settings["critical_weight"]
-
-        last_threshold = list(self.thresholds.keys())[-1]
-        if self.state.score >= last_threshold:
-            self.state.text_value = StateText[self.thresholds[last_threshold]]
-            self.state.color = StateColor[self.thresholds[last_threshold]]
-        else:
-            self.state.text_value = StateText[self.thresholds[self.state.score]]
-            self.state.color = StateColor[self.thresholds[self.state.score]]
-        self.state.last_update = datetime.datetime.now(tz=datetime.timezone.utc)
-
-    def _criteria_count(self):
-        return len(self.state.available_updates) > self.criteria_settings["count_threshold"]
-
-    def _criteria_critical(self):
-        regex = re.compile(self.criteria_settings["critical_pattern"])
-        matches = list(filter(regex.match, self.state.available_updates))
-
-        return bool(matches)
 
 
 def _get_available_updates():
@@ -137,65 +30,15 @@ def _get_available_updates():
             # pacman exits with code 1 if there are no updates
             return []
 
-        click.echo(f"Failed to query available updates: {error.stderr}", err=True, nl=False)
-        sys.exit(1)
+        panic(f"Failed to query available updates: {error.stderr}")
 
 
-def _persist_state(updates: Updates):
-    tempdir = tempfile.gettempdir()
-    update_file_path = Path("/".join([tempdir, "siun-state.json"]))
-    with open(update_file_path, "w+") as update_file:
-        json.dump(asdict(updates.state), update_file, cls=StateEncoder)
-
-
-def _read_state():
-    tempdir = tempfile.gettempdir()
-    update_file_path = Path("/".join([tempdir, "siun-state.json"]))
-    if not update_file_path.exists():
-        return None
-
-    with open(update_file_path) as update_file:
-        return json.load(update_file, cls=StateDecoder)
-
-
-class Formatter:
-    @staticmethod
-    def format_plain(state: UpdateState):
-        return state.text_value.value, {}
-
-    @staticmethod
-    def format_fancy(state: UpdateState):
-        return state.text_value.value, {"fg": state.color.value}
-
-    @staticmethod
-    def format_json(state: UpdateState):
-        state_dict = {"count": state.count, "text_value": state.text_value.value, "score": state.score}
-        return json.dumps(state_dict), {}
-
-    @staticmethod
-    def format_i3status(state: UpdateState):
-        i3status_state_map = {
-            "OK": "Idle",
-            "AVAILABLE_UPDATES": "Idle",
-            "WARNING_UPDATES": "Warning",
-            "CRITICAL_UPDATES": "Critical",
-        }
-        i3status_text_map = {
-            "OK": "",
-            "AVAILABLE_UPDATES": "",
-            "WARNING_UPDATES": "Updates recommended",
-            "CRITICAL_UPDATES": "Updates required",
-        }
-        i3status_data = {
-            "icon": "archive",
-            "state": i3status_state_map[state.text_value.name],
-            "text": i3status_text_map[state.text_value.name],
-        }
-        return json.dumps(i3status_data), {}
+def panic(message):
+    click.echo(message, err=True, nl=False)
+    sys.exit(1)
 
 
 def load_config():
-    # TODO: error handling
     with open(Path().home() / ".config" / "siun.toml", "rb") as file_obj:
         return tomllib.load(file_obj)
 
@@ -224,8 +67,13 @@ def main(*, output_format: str):
             "lastupdate_weight": 1,
         },
     }
-    user_config = load_config()
-    config = update_nested(config, user_config)
+    try:
+        user_config = load_config()
+        config = update_nested(config, user_config)
+    except OSError as error:
+        panic(f"Failed to open config file for reading: {error}")
+    except tomllib.TOMLDecodeError as error:
+        panic(f"Provided config file not valid: {error}")
 
     thresholds = {
         0: StateText.OK.name,
@@ -235,13 +83,13 @@ def main(*, output_format: str):
     }
 
     updates = Updates(thresholds=thresholds, criteria_settings=config["criteria"])
-    existing_state = _read_state()
+    existing_state = Updates.read_state()
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     if existing_state and (existing_state["last_update"] > (now - datetime.timedelta(minutes=30))):
         updates.update(available_updates=existing_state["available_updates"])
     else:
         updates.update(available_updates=_get_available_updates())
-        _persist_state(updates)
+        updates.persist_state()
 
     output = ""
     output_kwargs = {}
