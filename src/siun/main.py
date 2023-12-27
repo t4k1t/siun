@@ -34,18 +34,22 @@ def _get_available_updates():
 
 
 def panic(message):
+    """Write message to stderr and exit."""
     click.echo(message, err=True, nl=False)
     sys.exit(1)
 
 
 def load_config():
+    """Read config from disk."""
     with open(Path().home() / ".config" / "siun.toml", "rb") as file_obj:
         return tomllib.load(file_obj)
 
 
 def update_nested(d, u):
-    # Preserve existing keys of nested dicts
-    # https://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
+    """Preserve existing keys of nested dicts.
+
+    https://stackoverflow.com/a/3233356
+    """
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
             d[k] = update_nested(d.get(k, {}), v)
@@ -55,21 +59,21 @@ def update_nested(d, u):
 
 
 def main(*, output_format: str):
-    """Main function."""
-    config = {
+    """Check for pacman updates."""
+    default_config = {
         "cmd_available": "pacman -Quq",
         "criteria": {
             "critical_pattern": "^archlinux-keyring$|^linux$|^firefox$|^pacman.*$",
             "critical_weight": 1,
             "count_threshold": 15,
             "count_weight": 1,
-            "lastupdate_age_seconds": 604800,  # 7 days
+            "lastupdate_age_hours": 618,  # 7 days
             "lastupdate_weight": 1,
         },
     }
     try:
         user_config = load_config()
-        config = update_nested(config, user_config)
+        config = update_nested(default_config, user_config)
     except OSError as error:
         panic(f"Failed to open config file for reading: {error}")
     except tomllib.TOMLDecodeError as error:
@@ -103,6 +107,7 @@ def main(*, output_format: str):
     "--output-format", default="plain", type=click.Choice([of.value for of in OutputFormat], case_sensitive=False)
 )
 def cli(output_format):
+    """Run main with CLI args."""
     main(output_format=output_format)
 
 

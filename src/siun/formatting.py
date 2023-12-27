@@ -5,6 +5,8 @@ from siun.state import UpdateState
 
 
 class OutputFormat(Enum):
+    """Output format options."""
+
     PLAIN = "plain"
     FANCY = "fancy"
     JSON = "json"
@@ -12,21 +14,27 @@ class OutputFormat(Enum):
 
 
 class Formatter:
+    """Build output format."""
+
     @staticmethod
     def format_plain(state: UpdateState):
+        """Build simple text format."""
         return state.text_value.value, {}
 
     @staticmethod
     def format_fancy(state: UpdateState):
+        """Build coloured text format."""
         return state.text_value.value, {"fg": state.color.value}
 
     @staticmethod
     def format_json(state: UpdateState):
+        """Build JSON output format."""
         state_dict = {"count": state.count, "text_value": state.text_value.value, "score": state.score}
         return json.dumps(state_dict), {}
 
     @staticmethod
     def format_i3status(state: UpdateState):
+        """Build output format for i3status."""
         i3status_state_map = {
             "OK": "Idle",
             "AVAILABLE_UPDATES": "Idle",
