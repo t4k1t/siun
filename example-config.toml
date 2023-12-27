@@ -5,5 +5,5 @@ critical_pattern = "^archlinux-keyring$|^linux$|^firefox$|^pacman.*$"
 critical_weight = 1  # if set to `0` criterium won't be checked
 count_threshold = 10
 count_weight = 1
-lastupdate_age_seconds = 604800  # 7 days
+lastupdate_age_hours = 618  # 7 days
 lastupdate_weight = 1
