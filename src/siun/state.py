@@ -3,10 +3,17 @@ import json
 import os
 import re
 import tempfile
-from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+
+
+class State(Enum):
+    """Define update state."""
+
+    OK = "OK"
+    AVAILABLE_UPDATES = "AVAILABLE_UPDATES"
+    WARNING_UPDATES = "WARNING_UPDATES"
+    CRITICAL_UPDATES = "CRITICAL_UPDATES"
 
 
 class StateText(Enum):
@@ -27,31 +34,20 @@ class StateColor(Enum):
     CRITICAL_UPDATES = "red"
 
 
-@dataclass
-class UpdateState:
-    """Store state of updates."""
-
-    available_updates: list
-    score: int = 0
-    count: int = 0
-    text_value: StateText = StateText.OK
-    color: StateColor = StateColor.OK
-    last_update: datetime or None = None
-
-
 class StateEncoder(json.JSONEncoder):
     """Custom state encoder.
 
     Serializes Enum and datetime types to JSON.
     """
 
-    def default(self, obj):  # noqa
-        if isinstance(obj, Enum):
-            return {"py-type": type(obj).__name__, "value": obj.value}
-        if isinstance(obj, datetime.datetime):
-            return {"py-type": type(obj).__name__, "value": obj.isoformat()}
+    def default(self, o):
+        """Override to support more types."""
+        if isinstance(o, Enum):
+            return {"py-type": type(o).__name__, "value": o.value}
+        if isinstance(o, datetime.datetime):
+            return {"py-type": type(o).__name__, "value": o.isoformat()}
 
-        return json.JSONEncoder.default(self, obj)
+        return json.JSONEncoder.default(self, o)
 
 
 class StateDecoder(json.JSONDecoder):
@@ -61,77 +57,100 @@ class StateDecoder(json.JSONDecoder):
     """
 
     def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, *args, **kwargs, object_hook=self.object_hook)
+        json.JSONDecoder.__init__(self, *args, **kwargs, object_hook=self._custom_object_hook)
 
-    def object_hook(self, obj):  # noqa
-        pytype = obj.get("py-type")
+    def _custom_object_hook(self, o):
+        pytype = o.get("py-type")
         if not pytype:
-            return obj
+            return o
 
         if pytype == "datetime":
-            return datetime.datetime.fromisoformat(obj["value"])
-        elif pytype in [StateText.__name__, StateColor.__name__]:
+            return datetime.datetime.fromisoformat(o["value"])
+        elif pytype in [StateText.__name__, StateColor.__name__, State.__name__]:
             t = globals()[pytype]
-            return t(obj["value"])
+            return t(o["value"])
         else:
             raise NotImplementedError
 
-        return obj
+        return o
 
 
 class Updates:
     """Handle available updates."""
 
-    __slots__ = ("state", "thresholds", "criteria_settings")
-
-    def __init__(self, thresholds: dict, criteria_settings: dict):
-        self.thresholds = thresholds
-        self.state = UpdateState(available_updates=[])
+    def __init__(self, *, criteria_settings: dict, thresholds: dict):
+        self._track_update()
         self.criteria_settings = criteria_settings
+        self.thresholds = thresholds
+        self.available_updates = []
+        self.matched_criteria = {}
+        self.state = State.OK
 
-    def update(self, available_updates: Optional[list] = None):
+    def _track_update(self):
+        self.last_update = datetime.datetime.now(tz=datetime.timezone.utc)
+
+    @property
+    def score(self):
+        """Calculate score from criteria weights."""
+        return sum([criterium["weight"] for criterium in self.matched_criteria.values()])
+
+    @property
+    def count(self):
+        """Get count of available updates."""
+        return len(self.available_updates)
+
+    @property
+    def color(self):
+        """Get color based on state."""
+        return getattr(StateColor, self.state.name)
+
+    @property
+    def text_value(self):
+        """Get text value based on state."""
+        return getattr(StateText, self.state.name)
+
+    def update(self, available_updates: list | None = None):
         """Update state of updates."""
-        self.state.score = 0
+        self._track_update()
         if available_updates is None:
             available_updates = []
-        self.state.available_updates = available_updates
-        self.state.count = len(available_updates)
 
-        # Are there any updates?
-        if self.state.count > 0:
-            self.state.score += 1
-        # Rest of criteria
-        if self._criteria_count():
-            self.state.score += self.criteria_settings["count_weight"]
-        if self._criteria_critical():
-            self.state.score += self.criteria_settings["critical_weight"]
-        if self._criteria_last_update():
-            self.state.score += self.criteria_settings["lastupdate_weight"]
+        self.available_updates = available_updates
+        # Check criteria
+        if self.criteria_settings["available_weight"] > 0 and self._criterion_available(available_updates):
+            self.matched_criteria["available"] = {"weight": self.criteria_settings["available_weight"]}
+        if self.criteria_settings["count_weight"] > 0 and self._criterion_count(available_updates):
+            self.matched_criteria["count"] = {"weight": self.criteria_settings["count_weight"]}
+        if self.criteria_settings["critical_weight"] > 0 and self._criterion_critical(available_updates):
+            self.matched_criteria["critical"] = {"weight": self.criteria_settings["critical_weight"]}
+        if self.criteria_settings["lastupdate_weight"] > 0 and self._criterion_lastupdate(available_updates):
+            self.matched_criteria["lastupdate"] = {"weight": self.criteria_settings["lastupdate_weight"]}
 
-        last_threshold = list(self.thresholds.keys())[-1]
-        if self.state.score >= last_threshold:
-            self.state.text_value = StateText[self.thresholds[last_threshold]]
-            self.state.color = StateColor[self.thresholds[last_threshold]]
-        else:
-            self.state.text_value = StateText[self.thresholds[self.state.score]]
-            self.state.color = StateColor[self.thresholds[self.state.score]]
-        self.state.last_update = datetime.datetime.now(tz=datetime.timezone.utc)
+        thresholds = reversed(self.thresholds.keys())
+        for threshold in thresholds:
+            if self.score >= threshold:
+                self.state = State(self.thresholds[threshold])
+                break
 
-    def _criteria_count(self):
+    def _criterion_available(self, available_updates: list):
+        """Check if there are any available updates."""
+        return bool(available_updates)
+
+    def _criterion_count(self, available_updates: list):
         """Check if count of available updates has exceeded threshold."""
-        return len(self.state.available_updates) > self.criteria_settings["count_threshold"]
+        return len(available_updates) >= self.criteria_settings["count_threshold"]
 
-    def _criteria_critical(self):
+    def _criterion_critical(self, available_updates: list):
         """Check if list of available updates contains critical updates according to pattern."""
         regex = re.compile(self.criteria_settings["critical_pattern"])
-        matches = list(filter(regex.match, self.state.available_updates))
+        matches = list(filter(regex.match, available_updates))
 
         return bool(matches)
 
-    def _criteria_last_update(self):
+    def _criterion_lastupdate(self, available_updates: list):  # noqa: ARG002
         """Check if time of last update has exceeded set time period."""
         regex = re.compile(r"^\[([0-9TZ:\+\-]+)\] \[ALPM\] upgraded.*")
-        last_update = None
+        last_update = False
         now = datetime.datetime.now(tz=datetime.timezone.utc)
         for line in _reverse_readline(Path("/var/log/pacman.log")):
             match = regex.match(line)
@@ -148,7 +167,7 @@ class Updates:
         tempdir = tempfile.gettempdir()
         update_file_path = Path("/".join([tempdir, "siun-state.json"]))
         with open(update_file_path, "w+") as update_file:
-            json.dump(asdict(self.state), update_file, cls=StateEncoder)
+            json.dump(self.__dict__, update_file, cls=StateEncoder)
 
     @classmethod
     def read_state(cls):

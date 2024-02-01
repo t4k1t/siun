@@ -65,11 +65,11 @@ python = ["3.7", "3.8", "3.9", "3.10", "3.11"]
 detached = true
 dependencies = [
   "black>=23.1.0",
-  "mypy>=1.0.0",
+  "pyright>=1.1.0",
   "ruff>=0.0.243",
 ]
 [tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:src/siun tests}"
+typing = "pyright --createstub {args:src/siun tests}"
 style = [
   "ruff {args:.}",
   "black --check --diff {args:.}",

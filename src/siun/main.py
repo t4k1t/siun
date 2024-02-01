@@ -7,20 +7,16 @@ import datetime
 import subprocess
 import sys
 from pathlib import Path
+from typing import Mapping
 
 import click
 import tomllib
 
 from siun.formatting import Formatter, OutputFormat
-from siun.state import StateText, Updates
-
-CMD_AVAILABLE = "pacman -Quq"
+from siun.state import State, Updates
 
 
-def _get_available_updates():
-    cmd = ["pacman", "-Quq"]
-    if CMD_AVAILABLE:
-        cmd = CMD_AVAILABLE.split(" ")
+def _get_available_updates(cmd):
     try:
         available_updates_run = subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa
         return available_updates_run.stdout.splitlines()
@@ -33,7 +29,7 @@ def _get_available_updates():
         panic(f"Failed to query available updates: {error.stderr}")
 
 
-def panic(message):
+def panic(message: str):
     """Write message to stderr and exit."""
     click.echo(message, err=True, nl=False)
     sys.exit(1)
@@ -45,7 +41,7 @@ def load_config():
         return tomllib.load(file_obj)
 
 
-def update_nested(d, u):
+def update_nested(d: dict, u: dict | Mapping):
     """Preserve existing keys of nested dicts.
 
     https://stackoverflow.com/a/3233356
@@ -60,9 +56,11 @@ def update_nested(d, u):
 
 def main(*, output_format: str):
     """Check for pacman updates."""
-    default_config = {
+    config = {
         "cmd_available": "pacman -Quq",
+        "thresholds ": {"available": 1, "warning": 2, "critical": 3},
         "criteria": {
+            "available_weight": 1,
             "critical_pattern": "^archlinux-keyring$|^linux$|^firefox$|^pacman.*$",
             "critical_weight": 1,
             "count_threshold": 15,
@@ -72,33 +70,33 @@ def main(*, output_format: str):
         },
     }
     try:
+        # TODO: Validate config values
         user_config = load_config()
-        config = update_nested(default_config, user_config)
+        config = update_nested(config, user_config)
     except OSError as error:
         panic(f"Failed to open config file for reading: {error}")
     except tomllib.TOMLDecodeError as error:
         panic(f"Provided config file not valid: {error}")
 
-    thresholds = {
-        0: StateText.OK.name,
-        1: StateText.AVAILABLE_UPDATES.name,
-        2: StateText.WARNING_UPDATES.name,
-        3: StateText.CRITICAL_UPDATES.name,
+    cmd_available = config["cmd_available"].split(" ")
+
+    threshold_map = {
+        threshold: State(f"{name.upper()}_UPDATES").name for name, threshold in config["thresholds"].items()
     }
 
-    updates = Updates(thresholds=thresholds, criteria_settings=config["criteria"])
+    updates = Updates(criteria_settings=config["criteria"], thresholds=threshold_map)
     existing_state = Updates.read_state()
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     if existing_state and (existing_state["last_update"] > (now - datetime.timedelta(minutes=30))):
         updates.update(available_updates=existing_state["available_updates"])
     else:
-        updates.update(available_updates=_get_available_updates())
+        updates.update(available_updates=_get_available_updates(cmd=cmd_available))
         updates.persist_state()
 
     output = ""
     output_kwargs = {}
     formatter = Formatter()
-    output, output_kwargs = getattr(formatter, f"format_{output_format}")(updates.state)
+    output, output_kwargs = getattr(formatter, f"format_{output_format}")(updates)
     click.secho(output, **output_kwargs)
 
 
@@ -106,7 +104,7 @@ def main(*, output_format: str):
 @click.option(
     "--output-format", default="plain", type=click.Choice([of.value for of in OutputFormat], case_sensitive=False)
 )
-def cli(output_format):
+def cli(output_format: str):
     """Run main with CLI args."""
     main(output_format=output_format)
 
