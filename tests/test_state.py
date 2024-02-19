@@ -8,7 +8,7 @@ class TestUpdates:
 
     def test_defaults_ok(self, default_config, default_thresholds):
         """Test no available updates."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config["criteria"])
+        updates = Updates(thresholds_settings=default_thresholds, criteria_settings=default_config["criteria"])
         updates.update(available_updates=[])
         result = updates.text_value
 
@@ -16,7 +16,7 @@ class TestUpdates:
 
     def test_defaults_available(self, default_config, default_thresholds):
         """Test available updates."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config["criteria"])
+        updates = Updates(thresholds_settings=default_thresholds, criteria_settings=default_config["criteria"])
         updates.update(available_updates=["siun"])
         result = updates.text_value
 
@@ -24,7 +24,7 @@ class TestUpdates:
 
     def test_defaults_recommended(self, default_config, default_thresholds):
         """Test recommended updates."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config["criteria"])
+        updates = Updates(thresholds_settings=default_thresholds, criteria_settings=default_config["criteria"])
         updates.update(available_updates=["siun", "linux"])
         result = updates.text_value
 
@@ -32,7 +32,7 @@ class TestUpdates:
 
     def test_defaults_required(self, default_config, default_thresholds):
         """Test required updates."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config["criteria"])
+        updates = Updates(thresholds_settings=default_thresholds, criteria_settings=default_config["criteria"])
         updates.update(available_updates=["siun", "linux", *["package"] * 15])
         result = updates.text_value
 
@@ -59,9 +59,4 @@ def default_config():
 @pytest.fixture
 def default_thresholds():
     """Provide default thresholds."""
-    return {
-        0: StateText.OK.name,
-        1: StateText.AVAILABLE_UPDATES.name,
-        2: StateText.WARNING_UPDATES.name,
-        3: StateText.CRITICAL_UPDATES.name,
-    }
+    return {"available": 1, "warning": 2, "critical": 3}

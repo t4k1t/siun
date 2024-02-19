@@ -20,7 +20,7 @@ class TestFormatter:
     )
     def test_plain(self, state, expected_output):
         """Test plain formatter."""
-        updates = Updates(criteria_settings={}, thresholds={})
+        updates = Updates(criteria_settings={}, thresholds_settings={})
         updates.state = state
         formatter = Formatter()
 
@@ -39,7 +39,7 @@ class TestFormatter:
     )
     def test_fancy(self, state, expected_output, expected_kwargs):
         """Test fancy formatter."""
-        updates = Updates(criteria_settings={}, thresholds={})
+        updates = Updates(criteria_settings={}, thresholds_settings={})
         updates.state = state
         formatter = Formatter()
 
@@ -58,7 +58,7 @@ class TestFormatter:
     )
     def test_json(self, state, expected_output, expected_kwargs):
         """Test JSON formatter."""
-        updates = Updates(criteria_settings={}, thresholds={})
+        updates = Updates(criteria_settings={}, thresholds_settings={})
         updates.state = state
         formatter = Formatter()
 
@@ -68,7 +68,7 @@ class TestFormatter:
 
     def test_json_handles_count_correctly(self):
         """Test count for JSON formatter."""
-        updates = Updates(criteria_settings={}, thresholds={})
+        updates = Updates(criteria_settings={}, thresholds_settings={})
         updates.state = State.WARNING_UPDATES
         with mock.patch.object(updates, "available_updates", ["package"] * 42):
             formatter = Formatter()
@@ -79,7 +79,7 @@ class TestFormatter:
 
     def test_json_handles_score_correctly(self):
         """Test score for JSON formatter."""
-        updates = Updates(criteria_settings={}, thresholds={})
+        updates = Updates(criteria_settings={}, thresholds_settings={})
         updates.state = State.WARNING_UPDATES
         updates.matched_criteria = {"available": {"weight": 1}, "critical": {"weight": 2}}
         with mock.patch.object(updates, "available_updates", ["package", "important-package"]):

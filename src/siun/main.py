@@ -13,10 +13,10 @@ import click
 import tomllib
 
 from siun.formatting import Formatter, OutputFormat
-from siun.state import State, Updates
+from siun.state import Updates
 
 
-def _get_available_updates(cmd):
+def _get_available_updates(cmd: str):
     try:
         available_updates_run = subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa
         return available_updates_run.stdout.splitlines()
@@ -35,7 +35,7 @@ def panic(message: str):
     sys.exit(1)
 
 
-def load_config():
+def read_config():
     """Read config from disk."""
     with open(Path().home() / ".config" / "siun.toml", "rb") as file_obj:
         return tomllib.load(file_obj)
@@ -54,8 +54,8 @@ def update_nested(d: dict, u: dict | Mapping):
     return d
 
 
-def main(*, output_format: str):
-    """Check for pacman updates."""
+def get_config():
+    """Get config from defaults and user supplied values."""
     config = {
         "cmd_available": "pacman -Quq",
         "thresholds ": {"available": 1, "warning": 2, "critical": 3},
@@ -71,27 +71,36 @@ def main(*, output_format: str):
     }
     try:
         # TODO: Validate config values
-        user_config = load_config()
+        user_config = read_config()
         config = update_nested(config, user_config)
     except OSError as error:
         panic(f"Failed to open config file for reading: {error}")
     except tomllib.TOMLDecodeError as error:
         panic(f"Provided config file not valid: {error}")
 
-    cmd_available = config["cmd_available"].split(" ")
+    return config
 
-    threshold_map = {
-        threshold: State(f"{name.upper()}_UPDATES").name for name, threshold in config["thresholds"].items()
-    }
 
-    updates = Updates(criteria_settings=config["criteria"], thresholds=threshold_map)
+@click.group()
+def cli():  # noqa: D103
+    pass
+
+
+@cli.command()
+@click.option(
+    "--output-format", default="plain", type=click.Choice([of.value for of in OutputFormat], case_sensitive=False)
+)
+def get_state(output_format: str):
+    """Get cached update state."""
+    config = get_config()
+
+    updates = Updates(criteria_settings=config["criteria"], thresholds_settings=config["thresholds"])
     existing_state = Updates.read_state()
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     if existing_state and (existing_state["last_update"] > (now - datetime.timedelta(minutes=30))):
         updates.update(available_updates=existing_state["available_updates"])
     else:
-        updates.update(available_updates=_get_available_updates(cmd=cmd_available))
-        updates.persist_state()
+        updates.update(available_updates=[])
 
     output = ""
     output_kwargs = {}
@@ -100,13 +109,24 @@ def main(*, output_format: str):
     click.secho(output, **output_kwargs)
 
 
-@click.command()
-@click.option(
-    "--output-format", default="plain", type=click.Choice([of.value for of in OutputFormat], case_sensitive=False)
-)
-def cli(output_format: str):
-    """Run main with CLI args."""
-    main(output_format=output_format)
+@cli.command()
+def write_state():
+    """Persist update state."""
+    config = get_config()
+    cmd_available = config["cmd_available"].split(" ")
+
+    updates = Updates(criteria_settings=config["criteria"], thresholds_settings=config["thresholds"])
+    existing_state = Updates.read_state()
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    if existing_state and (existing_state["last_update"] > (now - datetime.timedelta(minutes=30))):
+        click.echo("Existing state too fresh. Skipping update...")
+    else:
+        click.echo("Getting available updates...")
+        updates.update(available_updates=_get_available_updates(cmd=cmd_available))
+        click.echo("Persisisting state...")
+        updates.persist_state()
+
+    click.echo("State update done.")
 
 
 if __name__ == "__main__":

@@ -72,16 +72,16 @@ class StateDecoder(json.JSONDecoder):
         else:
             raise NotImplementedError
 
-        return o
-
 
 class Updates:
     """Handle available updates."""
 
-    def __init__(self, *, criteria_settings: dict, thresholds: dict):
+    def __init__(self, *, criteria_settings: dict, thresholds_settings: dict):
         self._track_update()
         self.criteria_settings = criteria_settings
-        self.thresholds = thresholds
+        self.thresholds = {
+            threshold: State(f"{name.upper()}_UPDATES").name for name, threshold in thresholds_settings.items()
+        }
         self.available_updates = []
         self.matched_criteria = {}
         self.state = State.OK
