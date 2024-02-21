@@ -58,7 +58,7 @@ def get_config():
     """Get config from defaults and user supplied values."""
     config = {
         "cmd_available": "pacman -Quq",
-        "thresholds ": {"available": 1, "warning": 2, "critical": 3},
+        "thresholds": {"available": 1, "warning": 2, "critical": 3},
         "criteria": {
             "available_weight": 1,
             "critical_pattern": "^archlinux-keyring$|^linux$|^firefox$|^pacman.*$",
