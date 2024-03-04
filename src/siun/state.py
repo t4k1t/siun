@@ -1,10 +1,40 @@
 import datetime
 import json
 import os
-import re
+import shutil
 import tempfile
 from enum import Enum
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
+
+from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, CriterionLastupdate
+
+BUILTIN_CRITERIA = {
+    "available": CriterionAvailable(),
+    "count": CriterionCount(),
+    "critical": CriterionCritical(),
+    "lastupdate": CriterionLastupdate(),
+}
+EXPECTED_CLASS = "SiunCriterion"
+
+
+def _load_user_criteria() -> dict:
+    """Load user criteria."""
+    user_criteria = {}
+    include_path = Path().home() / ".config" / "siun" / "criteria"
+    if not include_path.exists():
+        return user_criteria
+    for f_name in include_path.iterdir():
+        if f_name.suffix != ".py":
+            continue
+        file_path = include_path / f_name
+        class_inst = None
+        py_mod = SourceFileLoader(file_path.stem, file_path.as_posix()).load_module()
+        if hasattr(py_mod, EXPECTED_CLASS):
+            class_inst = py_mod.SiunCriterion()
+        user_criteria[file_path.stem] = class_inst
+
+    return user_criteria
 
 
 class State(Enum):
@@ -116,15 +146,17 @@ class Updates:
             available_updates = []
 
         self.available_updates = available_updates
+
+        # Load criteria
+        criteria = BUILTIN_CRITERIA
+        user_criteria = _load_user_criteria()
+        # NOTE: It's possible to overload builtin criteria this way
+        criteria.update(user_criteria)
+
         # Check criteria
-        if self.criteria_settings["available_weight"] > 0 and self._criterion_available(available_updates):
-            self.matched_criteria["available"] = {"weight": self.criteria_settings["available_weight"]}
-        if self.criteria_settings["count_weight"] > 0 and self._criterion_count(available_updates):
-            self.matched_criteria["count"] = {"weight": self.criteria_settings["count_weight"]}
-        if self.criteria_settings["critical_weight"] > 0 and self._criterion_critical(available_updates):
-            self.matched_criteria["critical"] = {"weight": self.criteria_settings["critical_weight"]}
-        if self.criteria_settings["lastupdate_weight"] > 0 and self._criterion_lastupdate(available_updates):
-            self.matched_criteria["lastupdate"] = {"weight": self.criteria_settings["lastupdate_weight"]}
+        for name, criterion in criteria.items():
+            if criterion.is_fulfilled(self.criteria_settings, available_updates):
+                self.matched_criteria[name] = {"weight": self.criteria_settings[f"{name}_weight"]}
 
         thresholds = reversed(self.thresholds.keys())
         for threshold in thresholds:
@@ -132,42 +164,19 @@ class Updates:
                 self.state = State(self.thresholds[threshold])
                 break
 
-    def _criterion_available(self, available_updates: list):
-        """Check if there are any available updates."""
-        return bool(available_updates)
-
-    def _criterion_count(self, available_updates: list):
-        """Check if count of available updates has exceeded threshold."""
-        return len(available_updates) >= self.criteria_settings["count_threshold"]
-
-    def _criterion_critical(self, available_updates: list):
-        """Check if list of available updates contains critical updates according to pattern."""
-        regex = re.compile(self.criteria_settings["critical_pattern"])
-        matches = list(filter(regex.match, available_updates))
-
-        return bool(matches)
-
-    def _criterion_lastupdate(self, available_updates: list):  # noqa: ARG002
-        """Check if time of last update has exceeded set time period."""
-        regex = re.compile(r"^\[([0-9TZ:\+\-]+)\] \[ALPM\] upgraded.*")
-        last_update = False
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
-        for line in _reverse_readline(Path("/var/log/pacman.log")):
-            match = regex.match(line)
-            if match:
-                last_update = datetime.datetime.fromisoformat(match.group(1))
-                break
-        return (
-            last_update
-            and (last_update + datetime.timedelta(hours=self.criteria_settings["lastupdate_age_hours"])) < now
-        )
-
     def persist_state(self):
-        """Write state to disk."""
+        """Write state to disk.
+
+        Avoids partially written state file (and therefore invalid JSON) by
+        creating a temporary file first and only replacing the state file once
+        the writing operation is done.
+        """
         tempdir = tempfile.gettempdir()
         update_file_path = Path("/".join([tempdir, "siun-state.json"]))
-        with open(update_file_path, "w+") as update_file:
+        with tempfile.NamedTemporaryFile(mode="w+") as update_file:
             json.dump(self.__dict__, update_file, cls=StateEncoder)
+            update_file.flush()
+            shutil.copy(update_file.name, update_file_path)
 
     @classmethod
     def read_state(cls):
