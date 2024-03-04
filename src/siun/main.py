@@ -70,7 +70,6 @@ def get_config():
         },
     }
     try:
-        # TODO: Validate config values
         user_config = read_config()
         config = update_nested(config, user_config)
     except OSError as error:
@@ -96,8 +95,7 @@ def get_state(output_format: str):
 
     updates = Updates(criteria_settings=config["criteria"], thresholds_settings=config["thresholds"])
     existing_state = Updates.read_state()
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
-    if existing_state and (existing_state["last_update"] > (now - datetime.timedelta(minutes=30))):
+    if existing_state:
         updates.update(available_updates=existing_state["available_updates"])
     else:
         updates.update(available_updates=[])
