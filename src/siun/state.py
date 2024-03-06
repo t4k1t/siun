@@ -18,14 +18,23 @@ BUILTIN_CRITERIA = {
 EXPECTED_CLASS = "SiunCriterion"
 
 
-def _load_user_criteria() -> dict:
+def _load_user_criteria(criteria_settings) -> dict:
     """Load user criteria."""
     user_criteria = {}
+    enabled_criteria = []
     include_path = Path().home() / ".config" / "siun" / "criteria"
+
     if not include_path.exists():
         return user_criteria
+
+    # Get list of enabled user criteria from config
+    for setting, value in criteria_settings.items():
+        if "_weight" in setting and value > 0:
+            enabled_criteria.append(setting.split("_weight")[0])
+
     for f_name in include_path.iterdir():
-        if f_name.suffix != ".py":
+        # Only load enabled user criteria
+        if f_name.suffix != ".py" or f_name.stem not in enabled_criteria:
             continue
         file_path = include_path / f_name
         class_inst = None
@@ -149,7 +158,7 @@ class Updates:
 
         # Load criteria
         criteria = BUILTIN_CRITERIA
-        user_criteria = _load_user_criteria()
+        user_criteria = _load_user_criteria(self.criteria_settings)
         # NOTE: It's possible to overload builtin criteria this way
         criteria.update(user_criteria)
 
