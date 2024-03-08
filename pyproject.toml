@@ -24,7 +24,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["click"]
+dependencies = ["click", "pydantic"]
 
 [project.optional-dependencies]
 dev = [

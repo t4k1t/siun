@@ -119,7 +119,7 @@ class Updates:
         self._track_update()
         self.criteria_settings = criteria_settings
         self.thresholds = {
-            threshold: State(f"{name.upper()}_UPDATES").name for name, threshold in thresholds_settings.items()
+            threshold: State(f"{name.value.upper()}_UPDATES").name for name, threshold in thresholds_settings.items()
         }
         self.available_updates = []
         self.matched_criteria = {}

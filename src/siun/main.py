@@ -6,17 +6,53 @@ import collections.abc
 import datetime
 import subprocess
 import sys
+from enum import Enum
 from pathlib import Path
 from typing import Mapping
 
 import click
 import tomllib
+from pydantic import BaseModel, field_validator
 
 from siun.formatting import Formatter, OutputFormat
 from siun.state import Updates
 
 
-def _get_available_updates(cmd: str):
+class Threshold(Enum):
+    """Threshold levels."""
+
+    available = "available"
+    warning = "warning"
+    critical = "critical"
+
+
+class SiunConfig(BaseModel):
+    """Config struct."""
+
+    cmd_available: str
+    thresholds: dict[Threshold, int]
+    criteria: dict
+
+    @field_validator("criteria")
+    def criteria_must_have_weight(cls, value):  # noqa N805: first arg is the SiunConfig class, not an instance
+        """Check if all criteria have a configured weight."""
+        names = set()
+        for key in value.keys():
+            if "_" in key:
+                names.add(key.split("_")[0])
+
+        missing_weights = []
+        for name in names:
+            if f"{name}_weight" not in value.keys():
+                missing_weights.append(name)
+        if missing_weights:
+            message = f"missing weight for criteria: {', '.join(missing_weights)}"
+            raise ValueError(message)
+
+        return value
+
+
+def _get_available_updates(cmd: list[str]):
     try:
         available_updates_run = subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa
         return available_updates_run.stdout.splitlines()
@@ -77,6 +113,7 @@ def get_config():
     except tomllib.TOMLDecodeError as error:
         panic(f"Provided config file not valid: {error}")
 
+    config = SiunConfig(**config)
     return config
 
 
@@ -93,7 +130,7 @@ def get_state(output_format: str):
     """Get cached update state."""
     config = get_config()
 
-    updates = Updates(criteria_settings=config["criteria"], thresholds_settings=config["thresholds"])
+    updates = Updates(criteria_settings=config.criteria, thresholds_settings=config.thresholds)
     existing_state = Updates.read_state()
     if existing_state:
         updates.update(available_updates=existing_state["available_updates"])
@@ -111,9 +148,9 @@ def get_state(output_format: str):
 def write_state():
     """Persist update state."""
     config = get_config()
-    cmd_available = config["cmd_available"].split(" ")
+    cmd_available = config.cmd_available.split(" ")
 
-    updates = Updates(criteria_settings=config["criteria"], thresholds_settings=config["thresholds"])
+    updates = Updates(criteria_settings=config.criteria, thresholds_settings=config.thresholds)
     existing_state = Updates.read_state()
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     if existing_state and (existing_state["last_update"] > (now - datetime.timedelta(minutes=30))):
