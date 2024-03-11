@@ -134,8 +134,6 @@ def get_state(output_format: str):
     existing_state = Updates.read_state()
     if existing_state:
         updates.update(available_updates=existing_state["available_updates"])
-    else:
-        updates.update(available_updates=[])
 
     output = ""
     output_kwargs = {}

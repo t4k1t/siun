@@ -40,12 +40,14 @@ class Formatter:
             "AVAILABLE_UPDATES": "Idle",
             "WARNING_UPDATES": "Warning",
             "CRITICAL_UPDATES": "Critical",
+            "UNKNOWN": "Idle",
         }
         i3status_text_map = {
             "OK": "",
             "AVAILABLE_UPDATES": "",
             "WARNING_UPDATES": ",".join([match[:2] for match in state.matched_criteria.keys()]),
             "CRITICAL_UPDATES": ",".join([match[:2] for match in state.matched_criteria.keys()]),
+            "UNKNOWN": "…",
         }
         i3status_data = {
             "icon": "archive",

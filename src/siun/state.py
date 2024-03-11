@@ -53,6 +53,7 @@ class State(Enum):
     AVAILABLE_UPDATES = "AVAILABLE_UPDATES"
     WARNING_UPDATES = "WARNING_UPDATES"
     CRITICAL_UPDATES = "CRITICAL_UPDATES"
+    UNKNOWN = "UNKNOWN"
 
 
 class StateText(Enum):
@@ -62,6 +63,7 @@ class StateText(Enum):
     AVAILABLE_UPDATES = "Updates available"
     WARNING_UPDATES = "Updates recommended"
     CRITICAL_UPDATES = "Updates required"
+    UNKNOWN = "Unknown"
 
 
 class StateColor(Enum):
@@ -71,6 +73,7 @@ class StateColor(Enum):
     AVAILABLE_UPDATES = "blue"
     WARNING_UPDATES = "yellow"
     CRITICAL_UPDATES = "red"
+    UNKNOWN = "magenta"
 
 
 class StateEncoder(json.JSONEncoder):
@@ -123,7 +126,7 @@ class Updates:
         }
         self.available_updates = []
         self.matched_criteria = {}
-        self.state = State.OK
+        self.state = State.UNKNOWN
 
     def _track_update(self):
         self.last_update = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -172,6 +175,7 @@ class Updates:
             if self.score >= threshold:
                 self.state = State(self.thresholds[threshold])
                 break
+            self.state = State("OK")
 
     def persist_state(self):
         """Write state to disk.
