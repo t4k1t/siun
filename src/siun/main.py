@@ -133,7 +133,7 @@ def get_state(output_format: str):
     updates = Updates(criteria_settings=config.criteria, thresholds_settings=config.thresholds)
     existing_state = Updates.read_state()
     if existing_state:
-        updates.update(available_updates=existing_state["available_updates"])
+        updates = Updates(thresholds_settings=config.thresholds, **existing_state)
 
     output = ""
     output_kwargs = {}

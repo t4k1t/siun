@@ -118,15 +118,37 @@ class StateDecoder(json.JSONDecoder):
 class Updates:
     """Handle available updates."""
 
-    def __init__(self, *, criteria_settings: dict, thresholds_settings: dict):
-        self._track_update()
+    def __init__(
+        self,
+        *,
+        criteria_settings: dict,
+        thresholds_settings: dict,
+        available_updates: list | None = None,
+        matched_criteria: dict | None = None,
+        state: State | None = None,
+        last_update: datetime.datetime | None = None,
+        thresholds=None,
+    ):
         self.criteria_settings = criteria_settings
-        self.thresholds = {
-            threshold: State(f"{name.value.upper()}_UPDATES").name for name, threshold in thresholds_settings.items()
-        }
-        self.available_updates = []
-        self.matched_criteria = {}
-        self.state = State.UNKNOWN
+        if thresholds is None:
+            thresholds = {
+                threshold: State(f"{name.value.upper()}_UPDATES").name
+                for name, threshold in thresholds_settings.items()
+            }
+        self.thresholds = thresholds
+
+        if available_updates is None:
+            available_updates = []
+        self.available_updates = available_updates
+        if matched_criteria is None:
+            matched_criteria = {}
+        self.matched_criteria = matched_criteria
+        if state is None:
+            state = State.UNKNOWN
+        self.state = state
+        if last_update is None:
+            last_update = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.last_update = last_update
 
     def _track_update(self):
         self.last_update = datetime.datetime.now(tz=datetime.timezone.utc)
