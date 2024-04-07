@@ -10,6 +10,7 @@ dist
 htmlcov
 _coverage
 .coverage
+.coverage.*
 .tox/*
 
 # documentation
