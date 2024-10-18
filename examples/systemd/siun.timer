@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodically update siun state
+
+[Timer]
+OnBootSec=20min
+OnUnitActiveSec=120min
+
+[Install]
+WantedBy=timers.target

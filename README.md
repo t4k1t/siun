@@ -7,19 +7,109 @@
 
 **Table of Contents**
 
+- [Usage](#usage)
 - [Installation](#installation)
+- [Configuration](#configuration)
 - [License](#license)
+- [Name](#name)
+
+## Usage
+
+The most basic way to use `siun` is to simply run the `check` command:
+
+```bash
+siun check
+```
+
+### Check command
+
+The `check` command runs a configurable console command to find which packages can be updated and checks them against various criteria to determine how urgent it is to apply those updates.
+
+#### Options
+
+The `check` command supports a few options:
+- `--quiet`: Suppress regular output; Useful if you only want to update the cache file
+- `--no-update`: Don't refresh available updates, only read from cache if available
+- `--no-cache`: Don't read or write cache file
+- `--output-format`: Pick output format for urgency report; Available formats are `[plain|fancy|json|i3status]`
 
 ## Installation
 
-```console
+```bash
 pip install siun
 ```
 
 ### Install dev env
 
-```console
+```bash
 pip install -e .[dev]
+```
+
+## Configuration
+
+Configuration happens through a toml file.
+
+The default configuration looks like this:
+
+```toml
+# command which returns list of available updates
+cmd_available = "pacman -Quq; if [ $? == 1 ]; then :; fi"  # pacman returns exit code 1 if there are no updates
+# weight required to consider updates to be of available, warning, or critical level
+thresholds = { available = 1, warning = 2, critical = 3 }
+# minimum age of cached update state before it will be refreshed
+cache_min_age_minutes = 30
+
+[criteria]
+# setting for `critical` criterion
+critical_pattern = "^archlinux-keyring$|^linux$|^pacman.*$"
+# weight the criterion contributes to urgency score
+critical_weight = 1
+# setting for `count` criterion
+count_threshold = 10
+# setting weight to 0 disables check
+count_weight = 0
+# setting for `last_pacman_update` criterion
+last_pacman_update_age_hours = 618  # 7 days
+last_pacman_update_weight = 1
+```
+
+## Criteria
+
+`siun` checks various criteria to determine how urgent updates are. Each criterion has a `weight` which contributes to a total `score`. This `score` is then compared to a list of thresholds to determine wheter updates are `available`, `recommended` or `required`.
+
+### Built-in criteria
+
+The following criteria are built-in:
+- `available`: Any updates are available
+- `count`: Number of available updates exceeds threshold
+- `critical`: Any of the available updates is considered a critical package
+- `lastupdate`: Time since last update has exceeded threshold
+
+### Custom criteria
+
+You can also define your own criteria as Python code. Any python file in `$XDG_CONFIG_DIR/siun/criteria` will be checked for a class called `SiunCriterion` and run its `is_fulfilled` method.
+
+Example custom criterion checking if any available updates are reported by `arch-audit`:
+
+```python
+import subprocess
+
+
+class SiunCriterion:
+    """Custom criterion."""
+
+    def is_fulfilled(self, criteria_settings: dict, available_updates: list):
+        """Check if any available updates are in arch-audit list."""
+        audit_packages = []
+        arch_audit_run = subprocess.run(
+            ["/usr/bin/arch-audit", "-q", "-u"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        audit_packages = arch_audit_run.stdout.splitlines()
+
+        return bool(set(available_updates) & set(audit_packages))
 ```
 
 ## License

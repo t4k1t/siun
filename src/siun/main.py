@@ -1,165 +1,142 @@
 #!/usr/bin/env python
 
-"""siun - check for pacman updates."""
+"""siun - check for updates."""
 
-import collections.abc
 import datetime
 import subprocess
-import sys
-from enum import Enum
-from pathlib import Path
-from typing import Mapping
+from typing import Any
 
 import click
-import tomllib
-from pydantic import BaseModel, field_validator
 
+from siun.config import Threshold, get_config
+from siun.errors import (
+    CmdRunError,
+    ConfigError,
+    CriterionError,
+    SiunCLIError,
+    SiunGetUpdatesError,
+    SiunStateUpdateError,
+)
+from siun import __version__
 from siun.formatting import Formatter, OutputFormat
 from siun.state import Updates
 
-
-class Threshold(Enum):
-    """Threshold levels."""
-
-    available = "available"
-    warning = "warning"
-    critical = "critical"
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 
-class SiunConfig(BaseModel):
-    """Config struct."""
-
-    cmd_available: str
-    thresholds: dict[Threshold, int]
-    criteria: dict
-
-    @field_validator("criteria")
-    def criteria_must_have_weight(cls, value):  # noqa N805: first arg is the SiunConfig class, not an instance
-        """Check if all criteria have a configured weight."""
-        names = set()
-        for key in value.keys():
-            if "_" in key:
-                names.add(key.split("_")[0])
-
-        missing_weights = []
-        for name in names:
-            if f"{name}_weight" not in value.keys():
-                missing_weights.append(name)
-        if missing_weights:
-            message = f"missing weight for criteria: {', '.join(missing_weights)}"
-            raise ValueError(message)
-
-        return value
-
-
-def _get_available_updates(cmd: list[str]):
+def _get_available_updates(cmd: str) -> list[str] | None:
     try:
-        available_updates_run = subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa
+        available_updates_run = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            shell=True,  # noqa: S602
+        )
         return available_updates_run.stdout.splitlines()
 
     except subprocess.CalledProcessError as error:
-        if error.returncode == 1 and not error.stdout and not error.stderr:
-            # pacman exits with code 1 if there are no updates
-            return []
-
-        panic(f"Failed to query available updates: {error.stderr}")
+        raise CmdRunError(error.stderr) from error
+    except FileNotFoundError as error:
+        raise CmdRunError(error) from error
 
 
-def panic(message: str):
-    """Write message to stderr and exit."""
-    click.echo(message, err=True, nl=False)
-    sys.exit(1)
-
-
-def read_config():
-    """Read config from disk."""
-    with open(Path().home() / ".config" / "siun.toml", "rb") as file_obj:
-        return tomllib.load(file_obj)
-
-
-def update_nested(d: dict, u: dict | Mapping):
-    """Preserve existing keys of nested dicts.
-
-    https://stackoverflow.com/a/3233356
-    """
-    for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
-            d[k] = update_nested(d.get(k, {}), v)
-        else:
-            d[k] = v
-    return d
-
-
-def get_config():
-    """Get config from defaults and user supplied values."""
-    config = {
-        "cmd_available": "pacman -Quq",
-        "thresholds": {"available": 1, "warning": 2, "critical": 3},
-        "criteria": {
-            "available_weight": 1,
-            "critical_pattern": "^archlinux-keyring$|^linux$|^firefox$|^pacman.*$",
-            "critical_weight": 1,
-            "count_threshold": 15,
-            "count_weight": 1,
-            "lastupdate_age_hours": 618,  # 7 days
-            "lastupdate_weight": 1,
-        },
-    }
+def _update_state(siun_state: Updates, cmd_available: str) -> None:
     try:
-        user_config = read_config()
-        config = update_nested(config, user_config)
-    except OSError as error:
-        panic(f"Failed to open config file for reading: {error}")
-    except tomllib.TOMLDecodeError as error:
-        panic(f"Provided config file not valid: {error}")
-
-    config = SiunConfig(**config)
-    return config
+        siun_state.update(available_updates=_get_available_updates(cmd=cmd_available))
+    except CmdRunError as error:
+        message = f"failed to query available updates: {error}"
+        raise SiunStateUpdateError(message) from error
+    except CriterionError as error:
+        message = f"failed to check criterion [{error.criterion_name}]: {error.message}"
+        raise SiunStateUpdateError(message) from error
 
 
-@click.group()
+def _get_updates(
+    *,
+    no_cache: bool,
+    no_update: bool,
+    cmd_available: str,
+    criteria: dict[str, Any],
+    thresholds: dict[Threshold, int],
+    cache_min_age_minutes: int,
+) -> Updates:
+    siun_state = Updates(criteria_settings=criteria, thresholds_settings=thresholds)
+    if no_cache:
+        if no_update:
+            return siun_state
+
+        try:
+            _update_state(siun_state, cmd_available)
+        except SiunStateUpdateError as error:
+            raise SiunGetUpdatesError(error.message) from error
+        return siun_state
+
+    now = datetime.datetime.now(tz=datetime.UTC)
+    cache_min_age = datetime.timedelta(minutes=cache_min_age_minutes)
+    existing_state = Updates.read_state()
+    if existing_state:
+        siun_state = Updates(thresholds_settings=thresholds, **dict(existing_state))
+    if no_update:
+        return siun_state
+
+    is_stale = existing_state and existing_state.last_update < (now - cache_min_age)
+    if not existing_state or (existing_state and is_stale):
+        try:
+            _update_state(siun_state, cmd_available)
+        except SiunStateUpdateError as error:
+            raise SiunGetUpdatesError(error.message) from error
+        try:
+            siun_state.persist_state()
+        except Exception as error:
+            message = f"failed to write state to disk: {error}"
+            raise SiunGetUpdatesError(message) from error
+
+    return siun_state
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
+@click.version_option(__version__)
 def cli():  # noqa: D103
     pass
 
 
 @cli.command()
+@click.option("--quiet", "-q", is_flag=True, show_default=True, default=False, help="Suppress output")
+@click.option("--no-update", "-U", is_flag=True, show_default=True, default=False, help="Don't get updates, only check")
+@click.option("--cache/--no-cache", " /-n", show_default=True, default=True, help="Ignore existing state on disk")
 @click.option(
-    "--output-format", default="plain", type=click.Choice([of.value for of in OutputFormat], case_sensitive=False)
+    "--output-format", "-o", default="plain", type=click.Choice([of.value for of in OutputFormat], case_sensitive=False)
 )
-def get_state(output_format: str):
-    """Get cached update state."""
-    config = get_config()
+def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool):
+    """Check for urgency of available updates."""
+    if no_update and not cache:
+        raise SiunCLIError(message="--no-update and --no-cache options are mutually exclusive")
 
-    updates = Updates(criteria_settings=config.criteria, thresholds_settings=config.thresholds)
-    existing_state = Updates.read_state()
-    if existing_state:
-        updates = Updates(thresholds_settings=config.thresholds, **existing_state)
+    config = None
+    try:
+        config = get_config()
+    except ConfigError as error:
+        message = f"{error.message}; config path: {error.config_path}"
+        raise SiunCLIError(message) from error
 
-    output = ""
-    output_kwargs = {}
+    cmd_available = config.cmd_available
+    try:
+        siun_state = _get_updates(
+            no_cache=not cache,
+            no_update=no_update,
+            cmd_available=cmd_available,
+            criteria=config.criteria,
+            thresholds=config.thresholds,
+            cache_min_age_minutes=config.cache_min_age_minutes,
+        )
+    except SiunGetUpdatesError as error:
+        raise SiunCLIError(error.message) from error
+
     formatter = Formatter()
-    output, output_kwargs = getattr(formatter, f"format_{output_format}")(updates)
-    click.secho(output, **output_kwargs)
-
-
-@cli.command()
-def write_state():
-    """Persist update state."""
-    config = get_config()
-    cmd_available = config.cmd_available.split(" ")
-
-    updates = Updates(criteria_settings=config.criteria, thresholds_settings=config.thresholds)
-    existing_state = Updates.read_state()
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
-    if existing_state and (existing_state["last_update"] > (now - datetime.timedelta(minutes=30))):
-        click.echo("Existing state too fresh. Skipping update...")
-    else:
-        click.echo("Getting available updates...")
-        updates.update(available_updates=_get_available_updates(cmd=cmd_available))
-        click.echo("Persisisting state...")
-        updates.persist_state()
-
-    click.echo("State update done.")
+    output, output_kwargs = getattr(formatter, f"format_{output_format}")(siun_state)
+    if not quiet:
+        click.secho(output, **output_kwargs)
 
 
 if __name__ == "__main__":

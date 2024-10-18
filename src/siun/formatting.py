@@ -1,5 +1,6 @@
 import json
 from enum import Enum
+from typing import Never
 
 from siun.state import Updates
 
@@ -17,23 +18,23 @@ class Formatter:
     """Build output format."""
 
     @staticmethod
-    def format_plain(state: Updates):
+    def format_plain(state: Updates) -> tuple[str, dict[Never, Never]]:
         """Build simple text format."""
         return state.text_value.value, {}
 
     @staticmethod
-    def format_fancy(state: Updates):
+    def format_fancy(state: Updates) -> tuple[str, dict[str, str]]:
         """Build coloured text format."""
         return state.text_value.value, {"fg": state.color.value}
 
     @staticmethod
-    def format_json(state: Updates):
+    def format_json(state: Updates) -> tuple[str, dict[Never, Never]]:
         """Build JSON output format."""
         state_dict = {"count": state.count, "text_value": state.text_value.value, "score": state.score}
         return json.dumps(state_dict), {}
 
     @staticmethod
-    def format_i3status(state: Updates):
+    def format_i3status(state: Updates) -> tuple[str, dict[Never, Never]]:
         """Build output format for i3status."""
         i3status_state_map = {
             "OK": "Idle",

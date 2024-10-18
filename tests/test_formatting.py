@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 from siun.formatting import Formatter
-from siun.state import State, StateText, Updates
+from siun.state import State, Updates
 
 
 class TestFormatter:
@@ -87,4 +87,35 @@ class TestFormatter:
 
             output, output_kwargs = formatter.format_json(updates)
             assert output == '{"count": 2, "text_value": "Updates recommended", "score": 3}'
+            assert output_kwargs == {}
+
+    @pytest.mark.parametrize(
+        "state,expected_output,expected_kwargs",
+        [
+            (State.OK, '{"icon": "archive", "state": "Idle", "text": ""}', {}),
+            (State.AVAILABLE_UPDATES, '{"icon": "archive", "state": "Idle", "text": ""}', {}),
+            (State.WARNING_UPDATES, '{"icon": "archive", "state": "Warning", "text": ""}', {}),
+            (State.CRITICAL_UPDATES, '{"icon": "archive", "state": "Critical", "text": ""}', {}),
+        ],
+    )
+    def test_i3status(self, state, expected_output, expected_kwargs):
+        """Test JSON formatter."""
+        updates = Updates(criteria_settings={}, thresholds_settings={})
+        updates.state = state
+        formatter = Formatter()
+
+        output, output_kwargs = formatter.format_i3status(updates)
+        assert output == expected_output
+        assert output_kwargs == expected_kwargs
+
+    def test_i3status_builds_text_correctly(self):
+        """Test score for JSON formatter."""
+        updates = Updates(criteria_settings={}, thresholds_settings={})
+        updates.state = State.WARNING_UPDATES
+        updates.matched_criteria = {"available": {"weight": 1}, "critical": {"weight": 2}}
+        with mock.patch.object(updates, "available_updates", ["package", "important-package"]):
+            formatter = Formatter()
+
+            output, output_kwargs = formatter.format_i3status(updates)
+            assert output == '{"icon": "archive", "state": "Warning", "text": "av,cr"}'
             assert output_kwargs == {}

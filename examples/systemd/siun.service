@@ -1,0 +1,11 @@
+[Unit]
+Description=Update siun state
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/siun check -q
+
+[Install]
+WantedBy=default.target

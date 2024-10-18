@@ -1,7 +1,9 @@
 cmd_available = "pacman -Quq"
+thresholds = { available = 1, warning = 2, critical = 3 }
+cache_min_age_minutes = 30
 
 [criteria]
-critical_pattern = "^archlinux-keyring$|^linux$|^firefox$|^pacman.*$"
+critical_pattern = "^archlinux-keyring$|^linux$|^pacman.*$"
 critical_weight = 1  # if set to `0` criterium won't be checked
 count_threshold = 10
 count_weight = 1
