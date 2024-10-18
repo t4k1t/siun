@@ -1,10 +1,14 @@
-# python
-__pycache__
-*.py[cod]
-build
-dist
+# python generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
 *.egg-info
 .cache
+
+# venv
+.venv
+.envrc
 
 # testing
 htmlcov
