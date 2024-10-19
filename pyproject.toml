@@ -1,6 +1,6 @@
 [project]
 name = "siun"
-version = "0.2.5"
+version = "1.0.0"
 description = 'Report urgency of package upgrades'
 authors = [
     { name = "Thomas Kager", email = "t4k1t+dev@protonmail.com" },
