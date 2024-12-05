@@ -12,6 +12,15 @@ dependencies = [
 readme = "README.md"
 requires-python = ">= 3.11"
 license = "MIT"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
 
 [project.urls]
 Documentation = "https://github.com/t4k1t/siun#readme"
@@ -42,6 +51,34 @@ packages = ["src/siun"]
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "B",
+    "C4", 
+    "D", 
+    "DTZ", 
+    "E", 
+    "EM",
+    "F", 
+    "G",
+    "I",
+    "ICN",
+    "LOG", 
+    "PIE", 
+    "PT", 
+    "PTH",
+    "S",
+    "SIM", 
+    "T20", 
+    "UP",
+    "W", 
+]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.basedpyright]
 ignore = ["tests"]
