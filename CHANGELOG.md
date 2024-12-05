@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - support for custom output format
-- classifiers to `pyproject.toml`
+- classifiers and ruff configuration to `pyproject.toml`
 
 ### Changed
 
