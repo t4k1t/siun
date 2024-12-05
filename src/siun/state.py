@@ -1,3 +1,5 @@
+"""Internal state of siun and available updates."""
+
 import datetime
 import importlib.util
 import json
@@ -8,7 +10,7 @@ from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import Any, no_type_check
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from siun.config import Threshold
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, SiunCriterion
@@ -94,6 +96,21 @@ class SiunState(BaseModel):
     last_update: datetime.datetime
 
 
+class FormatObject(BaseModel):
+    """Objects for custom output formatting."""
+
+    available_updates: str
+    last_update: str
+    matched_criteria: str
+    matched_criteria_short: str
+    score: int
+    status_text: str
+    update_count: int
+    # Excluded fields won't be usable in custom format
+    state_color: str = Field(exclude=True)
+    state_name: str = Field(exclude=True)
+
+
 class StateEncoder(json.JSONEncoder):
     """Custom state encoder.
 
@@ -118,7 +135,7 @@ class StateDecoder(json.JSONDecoder):
     """
 
     @no_type_check
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # noqa: D107
         json.JSONDecoder.__init__(self, *args, **kwargs, object_hook=self._custom_object_hook)
 
     @no_type_check
@@ -194,6 +211,21 @@ class Updates:
         """Get text value based on state."""
         return getattr(StateText, self.state.name)
 
+    @property
+    def format_object(self) -> FormatObject:
+        """Provide prepared values for formatters."""
+        return FormatObject(
+            available_updates=", ".join(self.available_updates),
+            last_update=self.last_update.replace(microsecond=0).isoformat(),
+            matched_criteria=", ".join(self.matched_criteria.keys()),
+            matched_criteria_short=",".join([match[:2] for match in self.matched_criteria]),
+            score=self.score,
+            status_text=self.text_value.value,
+            update_count=self.count,
+            state_color=self.color.value,
+            state_name=self.text_value.name,
+        )
+
     def update(self, available_updates: list[str] | None = None) -> None:
         """Update state of updates."""
         self._track_update()
@@ -255,5 +287,5 @@ class Updates:
         if not update_file_path.exists():
             return None
 
-        with open(update_file_path) as update_file:
+        with Path.open(update_file_path) as update_file:
             return SiunState(**json.load(update_file, cls=StateDecoder))

@@ -5,45 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - Unreleased
+
+### Added
+
+- support for custom output format
+- classifiers to `pyproject.toml`
+
+### Changed
+
+- handling of default config values to utilize `pydantic`
+- changelog wording to be more consistent
+- additional linting
+
 ## [1.0.0] - 2024-10-19
 
 ### Added
 
-- More consistent error handling and reporting
+- more consistent error handling and reporting
 - `--no-cache` option for `check` command
 - `--no-update` option for `check` command
 - `--quiet` option for `check` command
-- Criterion for time of last update
-- Additional unit tests
-- Initial support for custom user criteria
-- Config validation
+- criterion for time of last update
+- additional unit tests
+- initial support for custom user criteria
+- config validation
 - `unkown` state when there is no persisted state on disk
 
 ### Changed
 
-- Update example config
-- Update score on the fly
-- Separate update query from persisting state
-- Merge `get-state` and `write-state` subcommands into `check` subcommand
-- Switch from `hatch` to `rye`
+- example config to be up to date
+- score to update on the fly
+- update query to be separate from persisting state
+- `get-state` and `write-state` subcommands into one `check` subcommand
+- project/package management from `hatch` to `rye`
 
 ### Fixed
 
-- Typo in default config
-- Make sure state file always contains valid JSON
-- Minimum python version
+- typo in default config
+- state file to always contains valid JSON
+- minimum python version
 
 ## [0.2.0] - Unreleased
 
 ### Added
 
-- Initial PoC
-- Support for config file
+- initial PoC
+- support for config file
 
 ### Changed
 
-- Rename project
+- project name
 
 ### Removed
 
-- Badges pointing to existing tool
+- badges pointing to existing tool

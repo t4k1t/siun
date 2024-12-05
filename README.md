@@ -21,9 +21,11 @@ The most basic way to use `siun` is to simply run the `check` command:
 siun check
 ```
 
+
 ### Check command
 
 The `check` command runs a configurable console command to find which packages can be updated and checks them against various criteria to determine how urgent it is to apply those updates.
+
 
 #### Options
 
@@ -31,7 +33,8 @@ The `check` command supports a few options:
 - `--quiet`: Suppress regular output; Useful if you only want to update the cache file
 - `--no-update`: Don't refresh available updates, only read from cache if available
 - `--no-cache`: Don't read or write cache file
-- `--output-format`: Pick output format for urgency report; Available formats are `[plain|fancy|json|i3status]`
+- `--output-format`: Pick output format for urgency report; Available formats are `[plain|fancy|json|i3status|custom]`
+
 
 ## Installation
 
@@ -39,11 +42,13 @@ The `check` command supports a few options:
 pip install siun
 ```
 
+
 ### Install dev env
 
 ```bash
 pip install -e .[dev]
 ```
+
 
 ## Configuration
 
@@ -58,6 +63,8 @@ cmd_available = "pacman -Quq; if [ $? == 1 ]; then :; fi"  # pacman returns exit
 thresholds = { available = 1, warning = 2, critical = 3 }
 # minimum age of cached update state before it will be refreshed
 cache_min_age_minutes = 30
+# Custom output format - use with `--output-format=custom`
+custom_format = "$status_text: $available_updates"
 
 [criteria]
 # setting for `critical` criterion
@@ -73,9 +80,11 @@ last_pacman_update_age_hours = 618  # 7 days
 last_pacman_update_weight = 1
 ```
 
+
 ## Criteria
 
 `siun` checks various criteria to determine how urgent updates are. Each criterion has a `weight` which contributes to a total `score`. This `score` is then compared to a list of thresholds to determine wheter updates are `available`, `recommended` or `required`.
+
 
 ### Built-in criteria
 
@@ -84,6 +93,7 @@ The following criteria are built-in:
 - `count`: Number of available updates exceeds threshold
 - `critical`: Any of the available updates is considered a critical package
 - `lastupdate`: Time since last update has exceeded threshold
+
 
 ### Custom criteria
 
@@ -112,9 +122,26 @@ class SiunCriterion:
         return bool(set(available_updates) & set(audit_packages))
 ```
 
+
+### Custom output format
+
+It's possible to define your own output format by setting a `custom_format` in the configuration file, and passing `--output-format=custom` to the `siun check` call. See [Configuration](#configuration).
+
+Available format variables:
+
+- `$available_updates`:      Comma-separated list of available updates
+- `$last_update`:            Date and time of last time siun checked for updates in ISO format
+- `$matched_criteria`:       Comma-separated names of matched criteria
+- `$matched_criteria_short`: Comma-separated matched criteria, shortened to 2 characters
+- `$score`:                  Sum weight of matched criteria
+- `$status_text`:            Text representation of update status, e.g. "Updates available"
+- `$update_count`:           Number of available updates
+
+
 ## License
 
 `siun` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+
 
 ## Name
 

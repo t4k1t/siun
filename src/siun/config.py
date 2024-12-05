@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, no_type_check
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from siun.errors import ConfigError
 
@@ -23,10 +23,11 @@ class Threshold(Enum):
 class SiunConfig(BaseModel):
     """Config struct."""
 
-    cmd_available: str
-    cache_min_age_minutes: int
-    thresholds: dict[Threshold, int]
+    cmd_available: str = Field(default="pacman -Quq")
+    cache_min_age_minutes: int = Field(default=30)
+    thresholds: dict[Threshold, int] = Field(default={"available": 1, "warning": 2, "critical": 3})
     criteria: dict[str, Any]
+    custom_format: str = Field(default="$status_text: $available_updates")
 
     @field_validator("criteria")
     def criteria_must_have_weight(
@@ -35,13 +36,13 @@ class SiunConfig(BaseModel):
     ) -> dict[str, Any]:
         """Check if all criteria have a configured weight."""
         names: set[str] = set()
-        for key in value.keys():
+        for key in value:
             if "_" in key:
                 names.add(key.split("_")[0])
 
         missing_weights: list[str] = []
         for name in names:
-            if f"{name}_weight" not in value.keys():
+            if f"{name}_weight" not in value:
                 missing_weights.append(name)
         if missing_weights:
             message = f"missing weight for criteria: {', '.join(missing_weights)}"
@@ -52,7 +53,7 @@ class SiunConfig(BaseModel):
 
 def _read_config(config_path: Path) -> dict[str, Any]:  # no cov
     """Read config from disk."""
-    with open(config_path, "rb") as file_obj:
+    with Path.open(config_path, "rb") as file_obj:
         return tomllib.load(file_obj)
 
 
@@ -73,10 +74,9 @@ def _update_nested(d: dict, u: dict | Mapping) -> dict:
 def get_config() -> SiunConfig:
     """Get config from defaults and user supplied values."""
     config_path = CONFIG_PATH
+    # NOTE: `criteria` setting doesn't get its default value from the model
+    # because we want to allow partial configuration
     config_dict: dict[str, Any] = {
-        "cmd_available": "pacman -Quq",
-        "cache_min_age_minutes": 30,
-        "thresholds": {"available": 1, "warning": 2, "critical": 3},
         "criteria": {
             "available_weight": 1,
             "critical_pattern": "^archlinux-keyring$|^linux$|^pacman.*$",

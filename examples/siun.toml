@@ -1,6 +1,15 @@
 cmd_available = "pacman -Quq"
 thresholds = { available = 1, warning = 2, critical = 3 }
 cache_min_age_minutes = 30
+custom_format = "$status_text: $available_updates"
+# Available variables for custom_format:
+#     - $available_updates:      Comma-separated list of available updates
+#     - $last_update:            Date and time of last time siun checked for updates in ISO format
+#     - $matched_criteria:       Comma-separated names of matched criteria
+#     - $matched_criteria_short: Comma-separated matched criteria, shortened to 2 characters
+#     - $score:                  Sum weight of matched criteria
+#     - $status_text:            Text representation of update status, e.g. "Updates available"
+#     - $update_count:           Number of available updates
 
 [criteria]
 critical_pattern = "^archlinux-keyring$|^linux$|^pacman.*$"

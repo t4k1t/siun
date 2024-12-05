@@ -1,8 +1,11 @@
+"""Output formatters."""
+
 import json
 from enum import Enum
+from string import Template
 from typing import Never
 
-from siun.state import Updates
+from siun.state import FormatObject
 
 
 class OutputFormat(Enum):
@@ -12,29 +15,34 @@ class OutputFormat(Enum):
     FANCY = "fancy"
     JSON = "json"
     I3STATUS = "i3status"
+    CUSTOM = "custom"
 
 
 class Formatter:
     """Build output format."""
 
     @staticmethod
-    def format_plain(state: Updates) -> tuple[str, dict[Never, Never]]:
+    def format_plain(format_object: FormatObject) -> tuple[str, dict[Never, Never]]:
         """Build simple text format."""
-        return state.text_value.value, {}
+        return format_object.status_text, {}
 
     @staticmethod
-    def format_fancy(state: Updates) -> tuple[str, dict[str, str]]:
+    def format_fancy(format_object: FormatObject) -> tuple[str, dict[str, str]]:
         """Build coloured text format."""
-        return state.text_value.value, {"fg": state.color.value}
+        return format_object.status_text, {"fg": format_object.state_color}
 
     @staticmethod
-    def format_json(state: Updates) -> tuple[str, dict[Never, Never]]:
+    def format_json(format_object: FormatObject) -> tuple[str, dict[Never, Never]]:
         """Build JSON output format."""
-        state_dict = {"count": state.count, "text_value": state.text_value.value, "score": state.score}
+        state_dict = {
+            "count": format_object.update_count,
+            "text_value": format_object.status_text,
+            "score": format_object.score,
+        }
         return json.dumps(state_dict), {}
 
     @staticmethod
-    def format_i3status(state: Updates) -> tuple[str, dict[Never, Never]]:
+    def format_i3status(format_object: FormatObject) -> tuple[str, dict[Never, Never]]:
         """Build output format for i3status."""
         i3status_state_map = {
             "OK": "Idle",
@@ -46,13 +54,20 @@ class Formatter:
         i3status_text_map = {
             "OK": "",
             "AVAILABLE_UPDATES": "",
-            "WARNING_UPDATES": ",".join([match[:2] for match in state.matched_criteria.keys()]),
-            "CRITICAL_UPDATES": ",".join([match[:2] for match in state.matched_criteria.keys()]),
+            "WARNING_UPDATES": format_object.matched_criteria_short,
+            "CRITICAL_UPDATES": format_object.matched_criteria_short,
             "UNKNOWN": "…",
         }
         i3status_data = {
             "icon": "archive",
-            "state": i3status_state_map[state.text_value.name],
-            "text": i3status_text_map[state.text_value.name],
+            "state": i3status_state_map[format_object.state_name],
+            "text": i3status_text_map[format_object.state_name],
         }
         return json.dumps(i3status_data), {}
+
+    @staticmethod
+    def format_custom(format_object: FormatObject, template_string: str) -> tuple[str, dict[Never, Never]]:
+        """Build customised output format."""
+        format_template = Template(template_string)
+        output = format_template.safe_substitute(**format_object.model_dump())
+        return output, {}

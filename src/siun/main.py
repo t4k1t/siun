@@ -8,6 +8,7 @@ from typing import Any
 
 import click
 
+from siun import __version__
 from siun.config import Threshold, get_config
 from siun.errors import (
     CmdRunError,
@@ -17,7 +18,6 @@ from siun.errors import (
     SiunGetUpdatesError,
     SiunStateUpdateError,
 )
-from siun import __version__
 from siun.formatting import Formatter, OutputFormat
 from siun.state import Updates
 
@@ -26,12 +26,12 @@ CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 def _get_available_updates(cmd: str) -> list[str] | None:
     try:
-        available_updates_run = subprocess.run(
+        available_updates_run = subprocess.run(  # noqa: S602
             cmd,
             check=True,
             capture_output=True,
             text=True,
-            shell=True,  # noqa: S602
+            shell=True,
         )
         return available_updates_run.stdout.splitlines()
 
@@ -134,7 +134,10 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool):
         raise SiunCLIError(error.message) from error
 
     formatter = Formatter()
-    output, output_kwargs = getattr(formatter, f"format_{output_format}")(siun_state)
+    formatter_kwargs = {}
+    if output_format == OutputFormat.CUSTOM.value:
+        formatter_kwargs["template_string"] = config.custom_format
+    output, output_kwargs = getattr(formatter, f"format_{output_format}")(siun_state.format_object, **formatter_kwargs)
     if not quiet:
         click.secho(output, **output_kwargs)
 
