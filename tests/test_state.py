@@ -1,6 +1,7 @@
 import datetime
 import io
 import json
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from siun.state import State, StateText, Updates, _load_user_criteria
 
 
+# TODO: test custom state file location
 class TestUpdates:
     """Test Updates class."""
 
@@ -43,15 +45,15 @@ class TestUpdates:
 
         assert result == StateText.CRITICAL_UPDATES
 
-    @mock.patch("siun.state.open")
+    @mock.patch("siun.state.Path.open")
     def test_read_state(self, mock_open):
         """Test required updates."""
         json_content = io.StringIO(
-            '{'
-                '"last_update": {"py-type": "datetime", "value": "1970-01-01T01:00:00Z"}, '
-                '"state": {"py-type": "State", "value": "OK"}, "thresholds": {}, '
-                '"matched_criteria": {}, "available_updates": ["siun"], "criteria_settings": {}'
-            '}'
+            "{"
+            '"last_update": {"py-type": "datetime", "value": "1970-01-01T01:00:00Z"}, '
+            '"state": {"py-type": "State", "value": "OK"}, "thresholds": {}, '
+            '"matched_criteria": {}, "available_updates": ["siun"], "criteria_settings": {}'
+            "}"
         )
         mock_open.return_value = json_content
         mock_file = mock.MagicMock()
@@ -60,15 +62,15 @@ class TestUpdates:
         assert updates
         assert updates.available_updates == ["siun"]
 
-    @mock.patch("siun.state.open")
+    @mock.patch("siun.state.Path.open")
     def test_read_state_handles_custom_types(self, mock_open):
         """Test loading state from disk handles custom types."""
         json_content = io.StringIO(
-            '{'
-                '"last_update": {"py-type": "datetime", "value": "1970-01-01T01:00:00Z"}, '
-                '"state": {"py-type": "State", "value": "OK"}, "thresholds": {}, '
-                '"matched_criteria": {}, "available_updates": [], "criteria_settings": {}'
-            '}'
+            "{"
+            '"last_update": {"py-type": "datetime", "value": "1970-01-01T01:00:00Z"}, '
+            '"state": {"py-type": "State", "value": "OK"}, "thresholds": {}, '
+            '"matched_criteria": {}, "available_updates": [], "criteria_settings": {}'
+            "}"
         )
         mock_open.return_value = json_content
         mock_file = mock.MagicMock()
@@ -82,16 +84,16 @@ class TestUpdates:
         """Test custom types can be serialized to disk."""
         last_update = datetime.datetime.now(tz=datetime.UTC)
         state = State.WARNING_UPDATES
-        update_file_path = tmp_path / "test.json"
+        state_file_path = tmp_path / "test.json"
         updates = Updates(
             thresholds_settings=default_thresholds,
             criteria_settings=default_config.criteria,
             last_update=last_update,
             state=state,
         )
-        updates.persist_state(update_file_path=update_file_path)
+        updates.persist_state(state_file_path=state_file_path)
 
-        content = json.loads(update_file_path.read_text())
+        content = json.loads(state_file_path.read_text())
         assert content["last_update"]["py-type"] == "datetime"
         assert content["state"]["py-type"] == "State"
 
@@ -104,11 +106,11 @@ class TestUpdates:
     def is_fullfilled(self, criteria_settings, available_updates):
         return True
         """
-        with open(include_path / "test_criterion.py", "w+") as criterion_file:
+        with Path.open(include_path / Path("test_criterion.py"), "w+") as criterion_file:
             criterion_file.write(criterion_content)
         user_criteria = _load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
         assert user_criteria
-        assert "test_criterion" in user_criteria.keys()
+        assert "test_criterion" in user_criteria
 
     @pytest.mark.parametrize("criteria_settings", [{"test_criterion_weight": 0}, {}])
     def test_custom_criterion_not_loaded_wo_weight(self, tmp_path, criteria_settings):
@@ -119,8 +121,8 @@ class TestUpdates:
     def is_fullfilled(self, criteria_settings, available_updates):
         return True
         """
-        with open(include_path / "test_criterion.py", "w+") as criterion_file:
+        with Path.open(include_path / Path("test_criterion.py"), "w+") as criterion_file:
             criterion_file.write(criterion_content)
         user_criteria = _load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
         assert isinstance(user_criteria, dict)
-        assert "test_criterion" not in user_criteria.keys()
+        assert "test_criterion" not in user_criteria

@@ -1,6 +1,5 @@
 import datetime
 from pathlib import Path
-from subprocess import CalledProcessError
 from unittest import mock
 
 from click.testing import CliRunner
@@ -15,7 +14,7 @@ EMPTY_STATE = SiunState(
     available_updates=[],
     matched_criteria={},
     state=State.OK,
-    last_update=datetime.datetime.now(tz=datetime.timezone.utc),
+    last_update=datetime.datetime.now(tz=datetime.UTC),
 )
 
 STALE_STATE = SiunState(
@@ -29,7 +28,7 @@ STALE_STATE = SiunState(
     available_updates=[],
     matched_criteria={"available": {"weight": 1}},
     state=State.AVAILABLE_UPDATES,
-    last_update=datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1),
+    last_update=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=1),
 )
 
 
@@ -162,18 +161,17 @@ def test_check_with_error_on_get_available_updates(
 
 @mock.patch("siun.main.Updates.persist_state")
 @mock.patch("siun.main.Updates.read_state", return_value=STALE_STATE)
-@mock.patch("siun.main.subprocess.run", side_effect=CalledProcessError(returncode=123, cmd="cmd", stderr="Fuuu"))
+@mock.patch("siun.main._get_available_updates", return_value=["package"])
 @mock.patch("siun.main.get_config")
-def test_check_with_error_in_get_available_updates_cmd(
+def test_check_with_custom_output_format(
     mock_get_config, mock_get_available_updates, mock_read_state, mock_persist_state, default_config
 ):
-    """Test get_available_updates cmd failing with an error."""
+    """Test check CLI command with no updates."""
     mock_get_config.return_value = default_config
-    runner = CliRunner(mix_stderr=False)
-    result = runner.invoke(check, ["-n"])
-    mock_read_state.assert_not_called()
-    mock_persist_state.assert_not_called()
+    runner = CliRunner()
+    result = runner.invoke(check, ["-o", "custom"])
+    mock_read_state.assert_called_once()
+    mock_persist_state.assert_called_once()
     mock_get_available_updates.assert_called_once()
-    assert result.exit_code == 1
-    assert result.output == ""
-    assert result.stderr == "Error: failed to query available updates: Fuuu\n"
+    assert result.exit_code == 0
+    assert result.output == "Updates available: package\n"

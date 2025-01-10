@@ -1,4 +1,5 @@
 import collections.abc
+import tempfile
 import tomllib
 from collections.abc import Mapping
 from enum import Enum
@@ -25,9 +26,12 @@ class SiunConfig(BaseModel):
 
     cmd_available: str = Field(default="pacman -Quq")
     cache_min_age_minutes: int = Field(default=30)
-    thresholds: dict[Threshold, int] = Field(default={"available": 1, "warning": 2, "critical": 3})
+    thresholds: dict[Threshold, int] = Field(
+        default={Threshold.available: 1, Threshold.warning: 2, Threshold.critical: 3}
+    )
     criteria: dict[str, Any]
     custom_format: str = Field(default="$status_text: $available_updates")
+    state_file: Path = Field(default=Path(tempfile.gettempdir() / Path("siun-state.json")))
 
     @field_validator("criteria")
     def criteria_must_have_weight(

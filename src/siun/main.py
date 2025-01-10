@@ -4,6 +4,7 @@
 
 import datetime
 import subprocess
+from pathlib import Path
 from typing import Any
 
 import click
@@ -60,6 +61,7 @@ def _get_updates(
     criteria: dict[str, Any],
     thresholds: dict[Threshold, int],
     cache_min_age_minutes: int,
+    state_file_path: Path,
 ) -> Updates:
     siun_state = Updates(criteria_settings=criteria, thresholds_settings=thresholds)
     if no_cache:
@@ -74,7 +76,7 @@ def _get_updates(
 
     now = datetime.datetime.now(tz=datetime.UTC)
     cache_min_age = datetime.timedelta(minutes=cache_min_age_minutes)
-    existing_state = Updates.read_state()
+    existing_state = Updates.read_state(state_file_path)
     if existing_state:
         siun_state = Updates(thresholds_settings=thresholds, **dict(existing_state))
     if no_update:
@@ -87,7 +89,7 @@ def _get_updates(
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         try:
-            siun_state.persist_state()
+            siun_state.persist_state(state_file_path)
         except Exception as error:
             message = f"failed to write state to disk: {error}"
             raise SiunGetUpdatesError(message) from error
@@ -129,6 +131,7 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool):
             criteria=config.criteria,
             thresholds=config.thresholds,
             cache_min_age_minutes=config.cache_min_age_minutes,
+            state_file_path=config.state_file,
         )
     except SiunGetUpdatesError as error:
         raise SiunCLIError(error.message) from error

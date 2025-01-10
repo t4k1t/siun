@@ -1,3 +1,4 @@
+import datetime
 from unittest import mock
 
 import pytest
@@ -24,7 +25,7 @@ class TestFormatter:
         updates.state = state
         formatter = Formatter()
 
-        output, output_kwargs = formatter.format_plain(updates)
+        output, output_kwargs = formatter.format_plain(updates.format_object)
         assert output == expected_output
         assert output_kwargs == {}
 
@@ -43,7 +44,7 @@ class TestFormatter:
         updates.state = state
         formatter = Formatter()
 
-        output, output_kwargs = formatter.format_fancy(updates)
+        output, output_kwargs = formatter.format_fancy(updates.format_object)
         assert output == expected_output
         assert output_kwargs == expected_kwargs
 
@@ -62,7 +63,7 @@ class TestFormatter:
         updates.state = state
         formatter = Formatter()
 
-        output, output_kwargs = formatter.format_json(updates)
+        output, output_kwargs = formatter.format_json(updates.format_object)
         assert output == expected_output
         assert output_kwargs == expected_kwargs
 
@@ -73,7 +74,7 @@ class TestFormatter:
         with mock.patch.object(updates, "available_updates", ["package"] * 42):
             formatter = Formatter()
 
-            output, output_kwargs = formatter.format_json(updates)
+            output, output_kwargs = formatter.format_json(updates.format_object)
             assert output == '{"count": 42, "text_value": "Updates recommended", "score": 0}'
             assert output_kwargs == {}
 
@@ -85,7 +86,7 @@ class TestFormatter:
         with mock.patch.object(updates, "available_updates", ["package", "important-package"]):
             formatter = Formatter()
 
-            output, output_kwargs = formatter.format_json(updates)
+            output, output_kwargs = formatter.format_json(updates.format_object)
             assert output == '{"count": 2, "text_value": "Updates recommended", "score": 3}'
             assert output_kwargs == {}
 
@@ -104,7 +105,7 @@ class TestFormatter:
         updates.state = state
         formatter = Formatter()
 
-        output, output_kwargs = formatter.format_i3status(updates)
+        output, output_kwargs = formatter.format_i3status(updates.format_object)
         assert output == expected_output
         assert output_kwargs == expected_kwargs
 
@@ -116,6 +117,43 @@ class TestFormatter:
         with mock.patch.object(updates, "available_updates", ["package", "important-package"]):
             formatter = Formatter()
 
-            output, output_kwargs = formatter.format_i3status(updates)
+            output, output_kwargs = formatter.format_i3status(updates.format_object)
             assert output == '{"icon": "archive", "state": "Warning", "text": "av,cr"}'
             assert output_kwargs == {}
+
+    @pytest.mark.parametrize(
+        "state,expected_output",
+        [
+            (State.OK, "Ok: dummy"),
+            (State.AVAILABLE_UPDATES, "Updates available: dummy"),
+            (State.WARNING_UPDATES, "Updates recommended: dummy"),
+            (State.CRITICAL_UPDATES, "Updates required: dummy"),
+        ],
+    )
+    def test_custom(self, state, expected_output, default_config):
+        """Test custom formatter."""
+        updates = Updates(criteria_settings={}, thresholds_settings={}, available_updates=["dummy"])
+        updates.state = state
+        formatter = Formatter()
+
+        output, output_kwargs = formatter.format_custom(updates.format_object, default_config.custom_format)
+        assert output == expected_output
+        assert output_kwargs == {}
+
+    def test_custom_with_all_values(self):
+        """Test custom formatter."""
+        template_string_all = "$available_updates | $last_update | $matched_criteria | $matched_criteria_short | $score | $status_text | $update_count"
+        last_update = datetime.datetime.fromisoformat("2025-01-09T00:00:00Z")
+        updates = Updates(
+            criteria_settings={},
+            thresholds_settings={},
+            available_updates=["dummy"],
+            last_update=last_update,
+            matched_criteria={"available": {"weight": 4}, "count": {"weight": 3}},
+        )
+        updates.state = State.AVAILABLE_UPDATES
+        formatter = Formatter()
+
+        output, output_kwargs = formatter.format_custom(updates.format_object, template_string_all)
+        assert output == "dummy | 2025-01-09T00:00:00+00:00 | available, count | av,co | 7 | Updates available | 1"
+        assert output_kwargs == {}

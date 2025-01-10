@@ -10,6 +10,7 @@ custom_format = "$status_text: $available_updates"
 #     - $score:                  Sum weight of matched criteria
 #     - $status_text:            Text representation of update status, e.g. "Updates available"
 #     - $update_count:           Number of available updates
+state_file = "/tmp/siun-state.json"
 
 [criteria]
 critical_pattern = "^archlinux-keyring$|^linux$|^pacman.*$"

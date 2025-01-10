@@ -1,7 +1,7 @@
+import tomllib
 from unittest import mock
 
 import pytest
-import tomllib
 from pydantic import ValidationError
 
 from siun.config import get_config

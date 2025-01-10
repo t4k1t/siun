@@ -97,7 +97,7 @@ class SiunState(BaseModel):
 
 
 class FormatObject(BaseModel):
-    """Objects for custom output formatting."""
+    """Objects for output formatting."""
 
     available_updates: str
     last_update: str
@@ -112,7 +112,8 @@ class FormatObject(BaseModel):
 
 
 class StateEncoder(json.JSONEncoder):
-    """Custom state encoder.
+    """
+    Custom state encoder.
 
     Serializes Enum and datetime types to JSON.
     """
@@ -129,7 +130,8 @@ class StateEncoder(json.JSONEncoder):
 
 
 class StateDecoder(json.JSONDecoder):
-    """Custom state decoder.
+    """
+    Custom state decoder.
 
     Deserialize custom python types from JSON.
     """
@@ -263,29 +265,24 @@ class Updates:
                 break
             self.state = State("OK")
 
-    def persist_state(self, update_file_path: Path | None = None) -> None:
-        """Write state to disk.
+    def persist_state(self, state_file_path: Path) -> None:
+        """
+        Write state to disk.
 
         Avoids partially written state file (and therefore invalid JSON) by
         creating a temporary file first and only replacing the state file once
         the writing operation is done.
         """
-        tempdir = tempfile.gettempdir()
-        if not update_file_path:
-            update_file_path = Path("/".join([tempdir, "siun-state.json"]))
         with tempfile.NamedTemporaryFile(mode="w+") as update_file:
             json.dump(self.__dict__, update_file, cls=StateEncoder)
             update_file.flush()
-            shutil.copy(update_file.name, update_file_path)
+            shutil.copy(update_file.name, state_file_path)
 
     @classmethod
-    def read_state(cls, update_file_path: Path | None = None) -> SiunState | None:
+    def read_state(cls, state_file_path: Path) -> SiunState | None:
         """Read state from disk."""
-        tempdir = tempfile.gettempdir()
-        if not update_file_path:
-            update_file_path = Path("/".join([tempdir, "siun-state.json"]))
-        if not update_file_path.exists():
+        if not state_file_path.exists():
             return None
 
-        with Path.open(update_file_path) as update_file:
+        with Path.open(state_file_path) as update_file:
             return SiunState(**json.load(update_file, cls=StateDecoder))
