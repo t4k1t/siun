@@ -9,7 +9,6 @@ import pytest
 from siun.state import State, StateText, Updates, _load_user_criteria
 
 
-# TODO: test custom state file location
 class TestUpdates:
     """Test Updates class."""
 
@@ -47,7 +46,7 @@ class TestUpdates:
 
     @mock.patch("siun.state.Path.open")
     def test_read_state(self, mock_open):
-        """Test required updates."""
+        """Test reading existing state."""
         json_content = io.StringIO(
             "{"
             '"last_update": {"py-type": "datetime", "value": "1970-01-01T01:00:00Z"}, '
@@ -114,7 +113,7 @@ class TestUpdates:
 
     @pytest.mark.parametrize("criteria_settings", [{"test_criterion_weight": 0}, {}])
     def test_custom_criterion_not_loaded_wo_weight(self, tmp_path, criteria_settings):
-        """Test custom criteria not getting loaded if they won't have a configured weight."""
+        """Test custom criteria not getting loaded without a configured weight."""
         include_path = tmp_path / "criteria"
         include_path.mkdir()
         criterion_content = """class SiunCriterion:

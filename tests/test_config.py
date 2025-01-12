@@ -30,7 +30,7 @@ class TestConfig:
 
     @mock.patch("siun.config._read_config")
     def test_missing_weights(self, mock_read_config):
-        """Test empty user config."""
+        """Test user config with missing weights."""
         mock_read_config.return_value = tomllib.loads(CONFIG_MISSING_WEIGHTS)
         with pytest.raises(ValidationError) as exc_info:
             get_config()

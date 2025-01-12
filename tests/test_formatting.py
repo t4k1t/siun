@@ -100,7 +100,7 @@ class TestFormatter:
         ],
     )
     def test_i3status(self, state, expected_output, expected_kwargs):
-        """Test JSON formatter."""
+        """Test i3status formatter."""
         updates = Updates(criteria_settings={}, thresholds_settings={})
         updates.state = state
         formatter = Formatter()
@@ -110,7 +110,7 @@ class TestFormatter:
         assert output_kwargs == expected_kwargs
 
     def test_i3status_builds_text_correctly(self):
-        """Test score for JSON formatter."""
+        """Test i3status formatter with multiple matched criteria."""
         updates = Updates(criteria_settings={}, thresholds_settings={})
         updates.state = State.WARNING_UPDATES
         updates.matched_criteria = {"available": {"weight": 1}, "critical": {"weight": 2}}
@@ -141,7 +141,7 @@ class TestFormatter:
         assert output_kwargs == {}
 
     def test_custom_with_all_values(self):
-        """Test custom formatter."""
+        """Test all possible custom formatter values."""
         template_string_all = "$available_updates | $last_update | $matched_criteria | $matched_criteria_short | $score | $status_text | $update_count"
         last_update = datetime.datetime.fromisoformat("2025-01-09T00:00:00Z")
         updates = Updates(

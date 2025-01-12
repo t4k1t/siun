@@ -29,6 +29,8 @@ pydantic==2.9.0
 pydantic-core==2.23.2
     # via pydantic
 pytest==8.3.2
+    # via pytest-subprocess
+pytest-subprocess==1.5.3
 ruff==0.6.4
 typing-extensions==4.12.2
     # via pydantic
