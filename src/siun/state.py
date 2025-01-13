@@ -169,6 +169,7 @@ class Updates:
         last_update: datetime.datetime | None = None,
         thresholds: dict[int, str] | None = None,
     ):
+        """Set up initial update state."""
         self.criteria_settings = criteria_settings
         if thresholds is None:
             thresholds = {

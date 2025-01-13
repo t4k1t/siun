@@ -1,3 +1,5 @@
+"""Check arch-audit for vulnerable packages."""
+
 import subprocess
 
 
@@ -7,7 +9,7 @@ class SiunCriterion:
     def is_fulfilled(self, criteria_settings: dict, available_updates: list):
         """Check if any available updates are in arch-audit list."""
         audit_packages = []
-        arch_audit_run = subprocess.run(
+        arch_audit_run = subprocess.run(  # noqa: S603
             ["/usr/bin/arch-audit", "-q", "-u"],
             check=True,
             capture_output=True,

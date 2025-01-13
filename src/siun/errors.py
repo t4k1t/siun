@@ -1,3 +1,5 @@
+"""Custom error module."""
+
 from pathlib import Path
 
 from click import ClickException
@@ -5,8 +7,6 @@ from click import ClickException
 
 class CmdRunError(Exception):
     """Wrap Exception for calls to 3rd party binaries."""
-
-    pass
 
 
 class CriterionError(Exception):
@@ -45,5 +45,3 @@ class SiunGetUpdatesError(Exception):
 
 class SiunCLIError(ClickException):
     """Wrap ClickException for explicit abort on error."""
-
-    pass
