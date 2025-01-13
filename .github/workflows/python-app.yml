@@ -27,6 +27,8 @@ jobs:
     - name: Install dependencies
       run: |
         rye sync --no-lock
+        rye list
+        rye --version
     - name: Lint
       run: |
         # stop the build if there are Python syntax errors or undefined names
