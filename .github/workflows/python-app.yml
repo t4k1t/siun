@@ -26,9 +26,7 @@ jobs:
         python-version: "3.12"
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements-dev.lock ]; then pip install -r requirements-dev.lock; fi
-        if [ -f requirements.lock ]; then pip install -r requirements.lock; fi
+        rye sync --no-lock
     - name: Lint
       run: |
         # stop the build if there are Python syntax errors or undefined names
