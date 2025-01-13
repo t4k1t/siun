@@ -1,3 +1,5 @@
+"""Test main function and CLI."""
+
 import datetime
 import subprocess
 import tomllib

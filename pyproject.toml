@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 
@@ -31,7 +32,7 @@ Source = "https://github.com/t4k1t/siun"
 "siun" = "siun.main:cli"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.26.3"]
 build-backend = "hatchling.build"
 
 [tool.rye]
@@ -81,6 +82,9 @@ fixable = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*" = ["S101", "PT006"]
+"**/__init__.py" = ["D104"]
+"src/siun/errors.py" = ["D107"]
+"src/siun/__main__.py" = ["D100"]
 
 [tool.ruff.format]
 quote-style = "double"

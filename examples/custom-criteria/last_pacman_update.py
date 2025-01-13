@@ -1,8 +1,10 @@
+"""Check for time of last package update."""
+
 import datetime
 import os
 import re
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 
 class SiunCriterion:
@@ -12,7 +14,7 @@ class SiunCriterion:
         """Check criterion."""
         regex = re.compile(r"^\[([0-9TZ:\+\-]+)\] \[ALPM\] upgraded.*")
         last_update = False
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        now = datetime.datetime.now(tz=datetime.UTC)
         for line in _reverse_readline(Path("/var/log/pacman.log")):
             match = regex.match(line)
             if match:
@@ -22,11 +24,12 @@ class SiunCriterion:
 
 
 def _reverse_readline(filename, buf_size=8192) -> Generator[str, None, None]:
-    """Build a generator that returns the lines of a file in reverse order.
+    """
+    Build a generator that returns the lines of a file in reverse order.
 
     https://stackoverflow.com/a/23646049
     """
-    with open(filename, "rb") as fh:
+    with Path.open(filename, "rb") as fh:
         segment = None
         offset = 0
         fh.seek(0, os.SEEK_END)

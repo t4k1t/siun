@@ -1,3 +1,5 @@
+"""Test state module."""
+
 import datetime
 import io
 import json
@@ -95,6 +97,10 @@ class TestUpdates:
         content = json.loads(state_file_path.read_text())
         assert content["last_update"]["py-type"] == "datetime"
         assert content["state"]["py-type"] == "State"
+
+
+class TestCustomCriteria:
+    """Test custom criteria."""
 
     def test_load_custom_criterion(self, tmp_path):
         """Test custom criteria can be loaded."""

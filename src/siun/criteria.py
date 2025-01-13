@@ -1,3 +1,5 @@
+"""Criteria module."""
+
 import re
 from typing import Any
 

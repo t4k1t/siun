@@ -1,3 +1,5 @@
+"""Test formatting module."""
+
 import datetime
 from unittest import mock
 
@@ -142,7 +144,10 @@ class TestFormatter:
 
     def test_custom_with_all_values(self):
         """Test all possible custom formatter values."""
-        template_string_all = "$available_updates | $last_update | $matched_criteria | $matched_criteria_short | $score | $status_text | $update_count"
+        template_string_all = (
+            "$available_updates | $last_update | $matched_criteria | "
+            "$matched_criteria_short | $score | $status_text | $update_count"
+        )
         last_update = datetime.datetime.fromisoformat("2025-01-09T00:00:00Z")
         updates = Updates(
             criteria_settings={},

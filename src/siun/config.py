@@ -1,3 +1,5 @@
+"""Config module."""
+
 import collections.abc
 import tempfile
 import tomllib
@@ -63,7 +65,8 @@ def _read_config(config_path: Path) -> dict[str, Any]:  # no cov
 
 @no_type_check
 def _update_nested(d: dict, u: dict | Mapping) -> dict:
-    """Preserve existing keys of nested dicts.
+    """
+    Preserve existing keys of nested dicts.
 
     https://stackoverflow.com/a/3233356
     """

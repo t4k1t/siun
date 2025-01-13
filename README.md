@@ -65,6 +65,8 @@ thresholds = { available = 1, warning = 2, critical = 3 }
 cache_min_age_minutes = 30
 # Custom output format - use with `--output-format=custom`
 custom_format = "$status_text: $available_updates"
+# Custom state file location
+state_file = "/tmp/siun-state.json"
 
 [criteria]
 # setting for `critical` criterion
