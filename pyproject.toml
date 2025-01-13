@@ -31,7 +31,7 @@ Source = "https://github.com/t4k1t/siun"
 "siun" = "siun.main:cli"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.26.3"]
 build-backend = "hatchling.build"
 
 [tool.rye]
