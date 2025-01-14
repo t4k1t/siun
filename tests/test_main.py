@@ -192,6 +192,8 @@ class TestMain:
         runner = CliRunner()
         result = runner.invoke(check)
 
+        print(mock_read_config)
+        print(mock_read_config())
         mock_read_state.assert_called_once_with(Path("/tmp/siun-test-state.json"))  # noqa: S108
         mock_persist_state.assert_called_once_with(Path("/tmp/siun-test-state.json"))  # noqa: S108
         mock_get_available_updates.assert_called_once()
