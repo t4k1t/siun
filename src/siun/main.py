@@ -121,6 +121,7 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool):
     except ConfigError as error:
         message = f"{error.message}; config path: {error.config_path}"
         raise SiunCLIError(message) from error
+    print(config)
 
     cmd_available = config.cmd_available
     try:
