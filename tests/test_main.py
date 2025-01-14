@@ -184,12 +184,11 @@ class TestMain:
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.Updates.read_state", return_value=False)
     @mock.patch("siun.main._get_available_updates", return_value=["package"])
-    @mock.patch("siun.config._read_config")
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
     def test_custom_state_file_path_config(
         self, mock_read_config, mock_get_available_updates, mock_read_state, mock_persist_state
     ):
         """Test check CLI command with custom state file path."""
-        mock_read_config.return_value = tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH)
         runner = CliRunner()
         result = runner.invoke(check)
 
