@@ -33,7 +33,7 @@ class SiunConfig(BaseModel):
     )
     criteria: dict[str, Any]
     custom_format: str = Field(default="$status_text: $available_updates")
-    state_file: Path = Field(default=Path(tempfile.gettempdir() / Path("siun-state-default.json")))
+    state_file: Path = Field(default=Path(tempfile.gettempdir() / Path("siun-state.json")))
 
     @field_validator("criteria")
     def criteria_must_have_weight(

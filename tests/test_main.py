@@ -36,9 +36,12 @@ STALE_STATE = SiunState(
     last_update=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=1),
 )
 
-CONFIG_CUSTOM_STATE_FILE_PATH = """
+
+def mock_read_config_custom_state_path(_):
+    """Mock config file with custom file path."""
+    return tomllib.loads("""
 state_file = "/tmp/siun-test-state.json"
-"""
+    """)
 
 
 class TestMain:
@@ -184,16 +187,12 @@ class TestMain:
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.Updates.read_state", return_value=False)
     @mock.patch("siun.main._get_available_updates", return_value=["package"])
-    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
-    def test_custom_state_file_path_config(
-        self, mock_read_config, mock_get_available_updates, mock_read_state, mock_persist_state
-    ):
+    @mock.patch("siun.config._read_config", mock_read_config_custom_state_path)
+    def test_custom_state_file_path_config(self, mock_get_available_updates, mock_read_state, mock_persist_state):
         """Test check CLI command with custom state file path."""
         runner = CliRunner()
         result = runner.invoke(check)
 
-        print(mock_read_config)
-        print(mock_read_config())
         mock_read_state.assert_called_once_with(Path("/tmp/siun-test-state.json"))  # noqa: S108
         mock_persist_state.assert_called_once_with(Path("/tmp/siun-test-state.json"))  # noqa: S108
         mock_get_available_updates.assert_called_once()
