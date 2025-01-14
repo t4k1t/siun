@@ -191,11 +191,11 @@ class TestMain:
     def test_custom_state_file_path_config(self, mock_get_available_updates, mock_read_state, mock_persist_state):
         """Test check CLI command with custom state file path."""
         runner = CliRunner()
-        result = runner.invoke(check)
+        with mock.patch("siun.config.CONFIG_PATH"):
+            result = runner.invoke(check)
         print(f"XXX {result.stdout_bytes}")
         print(f"XXX {result.stderr_bytes}")
 
-        mock_read_state.assert_called_once_with(Path("/tmp/siun-test-banana.json"))  # noqa: S108
         mock_read_state.assert_called_once_with(Path("/tmp/siun-test-state.json"))  # noqa: S108
         mock_persist_state.assert_called_once_with(Path("/tmp/siun-test-state.json"))  # noqa: S108
         mock_get_available_updates.assert_called_once()

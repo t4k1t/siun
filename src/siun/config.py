@@ -97,9 +97,7 @@ def get_config() -> SiunConfig:
     if config_path.exists() and config_path.is_file():
         try:
             user_config = _read_config(config_path)
-            print(f"YYY: user config: {user_config}")
             config_dict = _update_nested(config_dict, user_config)
-            print(f"YYY: config dict: {config_dict}")
         except OSError as error:
             message = f"failed to open config file for reading: {error}"
             raise ConfigError(message, config_path) from error
