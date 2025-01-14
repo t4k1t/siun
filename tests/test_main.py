@@ -164,8 +164,8 @@ class TestMain:
         assert result.output == ""
         assert result.stderr == "Error: failed to query available updates: Fuuu\n"
 
-    @mock.patch("siun.state.Updates.persist_state")
-    @mock.patch("siun.state.Updates.read_state", return_value=STALE_STATE)
+    @mock.patch("siun.main.Updates.persist_state")
+    @mock.patch("siun.main.Updates.read_state", return_value=STALE_STATE)
     @mock.patch("siun.main._get_available_updates", return_value=["package"])
     @mock.patch("siun.main.get_config")
     def test_check_with_custom_output_format(
@@ -181,8 +181,8 @@ class TestMain:
         assert result.exit_code == 0
         assert result.output == "Updates available: package\n"
 
-    @mock.patch("siun.state.Updates.persist_state")
-    @mock.patch("siun.state.Updates.read_state", return_value=False)
+    @mock.patch("siun.main.Updates.persist_state")
+    @mock.patch("siun.main.Updates.read_state", return_value=False)
     @mock.patch("siun.main._get_available_updates", return_value=["package"])
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
     def test_custom_state_file_path_config(
