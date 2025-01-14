@@ -24,7 +24,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: eifinger/setup-rye@v4
       with:
-        enable-cache: false
+        enable-cache: true
     - name: Install dependencies
       run: |
         rye sync --no-lock
