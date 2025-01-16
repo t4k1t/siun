@@ -25,14 +25,13 @@ jobs:
     - uses: eifinger/setup-rye@v4
       with:
         enable-cache: true
-    - name: Install dependencies
+    - name: Select Python toolchain and install dependencies
       run: |
         rye pin ${{ matrix.python-version }}
         rye sync --no-lock
-    # - name: Lint
-    #   run: |
-    #     # stop the build if there are Python syntax errors or undefined names
-    #     rye lint
-    - name: test
+    - name: Lint
+      run: |
+        rye lint
+    - name: Test
       run: |
         rye test
