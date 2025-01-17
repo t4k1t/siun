@@ -1,6 +1,7 @@
 """Test config module."""
 
 import tomllib
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -11,6 +12,10 @@ from siun.config import get_config
 CONFIG_MISSING_WEIGHTS = """
 [criteria]
 custom_threshold = 1000
+"""
+
+CONFIG_CUSTOM_STATE_FILE_PATH = """
+state_file = "/tmp/siun-test-state.json"
 """
 
 
@@ -30,10 +35,21 @@ class TestConfig:
         assert config == default_config
         assert config.cmd_available == "pacman -Quq"
 
-    @mock.patch("siun.config._read_config")
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_MISSING_WEIGHTS))
     def test_missing_weights(self, mock_read_config):
         """Test user config with missing weights."""
-        mock_read_config.return_value = tomllib.loads(CONFIG_MISSING_WEIGHTS)
-        with pytest.raises(ValidationError) as exc_info:
+        with mock.patch("siun.config.CONFIG_PATH"), pytest.raises(ValidationError) as exc_info:
             get_config()
+
+        mock_read_config.assert_called_once()
         assert "missing weight" in str(exc_info.value)
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
+    def test_custom_state_file_path(self, mock_read_config, default_config):
+        """Test user config with missing weights."""
+        with mock.patch("siun.config.CONFIG_PATH"):
+            config = get_config()
+        assert config != default_config
+        assert config.state_file == Path("/tmp/siun-test-state.json")  # noqa: S108
+
+        mock_read_config.assert_called_once()
