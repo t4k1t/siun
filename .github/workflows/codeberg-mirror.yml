@@ -1,0 +1,24 @@
+# This workflow will mirror commits to codeberg
+# For more information see: https://github.com/marketplace/actions/mirror-repository
+
+name: Codeberg mirror
+
+on:
+  push:
+    branches: [ "**" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Mirror repository
+      uses: yesolutions/mirror-action@v0.7.0
+      with:
+        REMOTE: git@codeberg.org:lokimotive/siun.git
+        GIT_SSH_PRIVATE_KEY: ${{ secrets.CODEBERG_SSH_KEY }}
+        GIT_SSH_NO_VERIFY_HOST: "true"
