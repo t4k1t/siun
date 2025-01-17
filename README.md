@@ -57,27 +57,27 @@ Configuration happens through a toml file.
 The default configuration looks like this:
 
 ```toml
-# command which returns list of available updates
+# Command which returns list of available updates
 cmd_available = "pacman -Quq; if [ $? == 1 ]; then :; fi"  # pacman returns exit code 1 if there are no updates
-# weight required to consider updates to be of available, warning, or critical level
+# Weight required to consider updates to be of available, warning, or critical level
 thresholds = { available = 1, warning = 2, critical = 3 }
-# minimum age of cached update state before it will be refreshed
+# Minimum age of cached update state before it will be refreshed
 cache_min_age_minutes = 30
 # Custom output format - use with `--output-format=custom`
 custom_format = "$status_text: $available_updates"
-# Custom state file location
+# State file location
 state_file = "/tmp/siun-state.json"
 
 [criteria]
-# setting for `critical` criterion
+# Setting for `critical` criterion
 critical_pattern = "^archlinux-keyring$|^linux$|^pacman.*$"
-# weight the criterion contributes to urgency score
+# Weight the criterion contributes to urgency score
 critical_weight = 1
-# setting for `count` criterion
+# Setting for `count` criterion
 count_threshold = 10
 # setting weight to 0 disables check
 count_weight = 0
-# setting for `last_pacman_update` criterion
+# Setting for `last_pacman_update` criterion
 last_pacman_update_age_hours = 618  # 7 days
 last_pacman_update_weight = 1
 ```
