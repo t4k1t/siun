@@ -1,6 +1,7 @@
 """Test config module."""
 
 import tomllib
+from os import environ
 from pathlib import Path
 from unittest import mock
 
@@ -17,6 +18,9 @@ custom_threshold = 1000
 CONFIG_CUSTOM_STATE_FILE_PATH = """
 state_file = "/tmp/siun-test-state.json"
 """
+
+# Override `$HOME` for consistent tests
+environ["HOME"] = "/tmp/siun-tests"  # noqa: S108
 
 
 def mock_read_config(_):
@@ -53,3 +57,12 @@ class TestConfig:
         assert config.state_file == Path("/tmp/siun-test-state.json")  # noqa: S108
 
         mock_read_config.assert_called_once()
+
+    @mock.patch("siun.config._read_config", mock_read_config)
+    def test_xdg_state_home_set(self, default_config):
+        """Test XDG_STATE_HOME being set."""
+        with mock.patch.dict(environ, clear=True):
+            environ["XDG_STATE_HOME"] = "/tmp/siun-tests/state"  # noqa: S108
+            config = get_config()
+
+        assert config.state_file == Path("/tmp/siun-tests/state/siun/state.json")  # noqa: S108

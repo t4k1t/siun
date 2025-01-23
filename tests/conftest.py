@@ -30,5 +30,5 @@ def default_config(default_thresholds):
             "lastupdate_weight": 1,
         },
         custom_format="$status_text: $available_updates",
-        state_file=Path("/tmp/siun-state.json"),  # noqa: S108
+        state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
     )

@@ -274,6 +274,9 @@ class Updates:
         creating a temporary file first and only replacing the state file once
         the writing operation is done.
         """
+        if not Path.exists(state_file_path.parent):
+            # Create parent dir for state file path if it doesn't exist
+            Path.mkdir(Path(state_file_path.parent))
         with tempfile.NamedTemporaryFile(mode="w+") as update_file:
             json.dump(self.__dict__, update_file, cls=StateEncoder)
             update_file.flush()

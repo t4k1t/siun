@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python 3.13 as supported version
 - `state_file` README config example
 
+### Changed
+
+- default `state_file` location
 
 ## [1.2.0] - 2025-01-12
 

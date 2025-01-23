@@ -1,11 +1,12 @@
 """Config module."""
 
 import collections.abc
-import tempfile
-import tomllib
 from collections.abc import Mapping
 from enum import Enum
+from os import environ
 from pathlib import Path
+from tomllib import TOMLDecodeError
+from tomllib import load as toml_load
 from typing import Any, no_type_check
 
 from pydantic import BaseModel, Field, field_validator
@@ -26,6 +27,17 @@ class Threshold(Enum):
 class SiunConfig(BaseModel):
     """Config struct."""
 
+    @staticmethod
+    def _default_state_file() -> Path:
+        """
+        Provide default value for state_file setting.
+
+        By default, siun will try the following in order:
+        1. `$XDG_STATE_HOME/siun/state.json`
+        2. `$HOME/.local/state/siun/state.json`
+        """
+        return Path(environ.get("XDG_STATE_HOME", Path.home() / Path(".local/state"))) / Path("siun/state.json")
+
     cmd_available: str = Field(default="pacman -Quq")
     cache_min_age_minutes: int = Field(default=30)
     thresholds: dict[Threshold, int] = Field(
@@ -33,7 +45,7 @@ class SiunConfig(BaseModel):
     )
     criteria: dict[str, Any]
     custom_format: str = Field(default="$status_text: $available_updates")
-    state_file: Path = Field(default=Path(tempfile.gettempdir() / Path("siun-state.json")))
+    state_file: Path = Field(default_factory=_default_state_file)
 
     @field_validator("criteria")
     def criteria_must_have_weight(
@@ -60,7 +72,7 @@ class SiunConfig(BaseModel):
 def _read_config(config_path: Path) -> dict[str, Any]:  # no cov
     """Read config from disk."""
     with Path.open(config_path, "rb") as file_obj:
-        return tomllib.load(file_obj)
+        return toml_load(file_obj)
 
 
 @no_type_check
@@ -101,7 +113,7 @@ def get_config() -> SiunConfig:
         except OSError as error:
             message = f"failed to open config file for reading: {error}"
             raise ConfigError(message, config_path) from error
-        except tomllib.TOMLDecodeError as error:
+        except TOMLDecodeError as error:
             message = f"provided config file not valid: {error}"
             raise ConfigError(message, config_path) from error
 
