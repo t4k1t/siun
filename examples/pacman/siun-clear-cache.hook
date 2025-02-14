@@ -1,0 +1,12 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Clearing siun cache...
+# Replace `my-user` with your own user name
+Exec = /usr/bin/rm -f /home/my-user/.local/state/siun/state.json
+When = PostTransaction

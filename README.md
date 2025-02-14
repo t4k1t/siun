@@ -21,11 +21,9 @@ The most basic way to use `siun` is to simply run the `check` command:
 siun check
 ```
 
-
 ### Check command
 
 The `check` command runs a configurable console command to find which packages can be updated and checks them against various criteria to determine how urgent it is to apply those updates.
-
 
 #### Options
 
@@ -35,20 +33,17 @@ The `check` command supports a few options:
 - `--no-cache`: Don't read or write cache file
 - `--output-format`: Pick output format for urgency report; Available formats are `[plain|fancy|json|i3status|custom]`
 
-
 ## Installation
 
 ```bash
 pip install siun
 ```
 
-
 ### Install dev env
 
 ```bash
 pip install -e .[dev]
 ```
-
 
 ## Configuration
 
@@ -82,11 +77,19 @@ last_pacman_update_age_hours = 618  # 7 days
 last_pacman_update_weight = 1
 ```
 
+### systemd
+
+It is recommended to set up some kind of automation for running `siun`. One possibility is to set up a `systemd` user unit & timer.
+
+See [examples/systemd](examples/systemd) for examples of such.
+
+### pacman
+
+In order to automatically clear `siun`'s cache when packages get updated, it's possible to set up a pacman hook. Simply edit the `siun-clear-cache.hook` file in the [examples/pacman](examples/pacman) folder to contain the correct `$HOME` path and copy it to `/etc/pacman.d/hooks/`. The example deletes the state cache after `Install`, `Upgrade`, and `Remove` operations.
 
 ## Criteria
 
 `siun` checks various criteria to determine how urgent updates are. Each criterion has a `weight` which contributes to a total `score`. This `score` is then compared to a list of thresholds to determine wheter updates are `available`, `recommended` or `required`.
-
 
 ### Built-in criteria
 
@@ -95,7 +98,6 @@ The following criteria are built-in:
 - `count`: Number of available updates exceeds threshold
 - `critical`: Any of the available updates is considered a critical package
 - `lastupdate`: Time since last update has exceeded threshold
-
 
 ### Custom criteria
 
@@ -124,7 +126,6 @@ class SiunCriterion:
         return bool(set(available_updates) & set(audit_packages))
 ```
 
-
 ### Custom output format
 
 It's possible to define your own output format by setting a `custom_format` in the configuration file, and passing `--output-format=custom` to the `siun check` call. See [Configuration](#configuration).
@@ -139,11 +140,9 @@ Available format variables:
 - `$status_text`:            Text representation of update status, e.g. "Updates available"
 - `$update_count`:           Number of available updates
 
-
 ## License
 
 `siun` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
-
 
 ## Name
 
