@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh package list daily.
+Wants=network-online.target
+After=network-online.target nss-lookup.target
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
