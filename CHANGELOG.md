@@ -11,10 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Python 3.13 as supported version
 - `state_file` README config example
+- More systemd unit & timer examples
 
 ### Changed
 
-- default `state_file` location
+- Default `state_file` location
+- Extended configuration section in README to cover more complete setup
+
+### Fixed
+
+- Missing GitHub version links in CHANGELOG
 
 ## [1.2.0] - 2025-01-12
 
@@ -87,3 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - badges pointing to existing tool
+
+[Unreleased]: https://github.com/t4k1t/siun/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/t4k1t/siun/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/t4k1t/siun/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/t4k1t/siun/releases/tag/v1.0.0
