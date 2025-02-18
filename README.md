@@ -3,6 +3,8 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/siun.svg)](https://pypi.org/project/siun)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/siun.svg)](https://pypi.org/project/siun)
 
+Check how urgently packages have to be upgraded.
+
 -----
 
 **Table of Contents**
@@ -15,11 +17,13 @@
 
 ## Usage
 
-The most basic way to use `siun` is to simply run the `check` command:
+On Arch Linux, or any other system that uses `pacman`, the most basic way to use `siun` is to simply run the `check` command:
 
 ```bash
 siun check
 ```
+
+Any other OS/distribution will require some [configuration](#configuration) first.
 
 ### Check command
 
