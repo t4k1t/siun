@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Default `state_file` location
 - Extended configuration section in README to cover more complete setup
+- Switched to `uv`
 
 ### Fixed
 

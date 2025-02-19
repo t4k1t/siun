@@ -22,16 +22,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: eifinger/setup-rye@v4
+    - uses: astral-sh/setup-uv@v5
       with:
+        version: "latest"
+        python-version: ${{ matrix.python-version }}
         enable-cache: true
-    - name: Select Python toolchain and install dependencies
-      run: |
-        rye pin ${{ matrix.python-version }}
-        rye sync --no-lock
     - name: Lint
       run: |
-        rye lint
+        uv run --frozen ruff check src/
     - name: Test
       run: |
-        rye test
+        uv run --frozen pytest
