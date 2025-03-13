@@ -10,7 +10,7 @@ class SiunCriterion:
         """Check if any available updates are in arch-audit list."""
         audit_packages = []
         arch_audit_run = subprocess.run(  # noqa: S603
-            ["/usr/bin/arch-audit", "-q", "-u"],
+            ["/usr/bin/arch-audit", "-q", "-u"],  # -u only reports vulnerable packages for which updates are available
             check=True,
             capture_output=True,
             text=True,
