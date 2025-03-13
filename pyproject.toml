@@ -91,6 +91,7 @@ quote-style = "double"
 [tool.basedpyright]
 ignore = ["tests"]
 reportAny = false
+reportExplicitAny = false
 reportImplicitOverride = false
 reportMissingSuperCall = false
 
