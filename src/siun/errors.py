@@ -1,6 +1,7 @@
 """Custom error module."""
 
 from pathlib import Path
+from typing import final
 
 from click import ClickException
 
@@ -9,6 +10,7 @@ class CmdRunError(Exception):
     """Wrap Exception for calls to 3rd party binaries."""
 
 
+@final
 class CriterionError(Exception):
     """Wrap Exception for criterion errors."""
 
@@ -18,6 +20,7 @@ class CriterionError(Exception):
         self.criterion_name = criterion_name
 
 
+@final
 class ConfigError(Exception):
     """Custom error type for configuration issues."""
 
@@ -27,6 +30,7 @@ class ConfigError(Exception):
         self.config_path = config_path
 
 
+@final
 class SiunStateUpdateError(Exception):
     """Wrap Exception for errors on updating the internal state."""
 
@@ -35,6 +39,7 @@ class SiunStateUpdateError(Exception):
         self.message = message
 
 
+@final
 class SiunGetUpdatesError(Exception):
     """Wrap Exception for errors on getting available updates."""
 

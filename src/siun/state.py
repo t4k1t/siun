@@ -8,7 +8,7 @@ import tempfile
 from enum import Enum
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
-from typing import Any, no_type_check
+from typing import Any, final, no_type_check
 
 from pydantic import BaseModel, Field
 
@@ -46,6 +46,9 @@ def _load_user_criteria(*, criteria_settings: dict[str, Any], include_path: Path
         file_path = include_path / f_name
         py_mod_loader = SourceFileLoader(file_path.stem, file_path.as_posix())
         py_mod_spec = importlib.util.spec_from_loader(py_mod_loader.name, py_mod_loader)
+        if py_mod_spec is None:
+            message = "Could not create module specification for source file loader"
+            raise ImportError(message)
         py_mod = importlib.util.module_from_spec(py_mod_spec)
         py_mod_loader.exec_module(py_mod)
         if hasattr(py_mod, EXPECTED_CLASS):
@@ -155,6 +158,7 @@ class StateDecoder(json.JSONDecoder):
             raise NotImplementedError
 
 
+@final
 class Updates:
     """Handle available updates."""
 
