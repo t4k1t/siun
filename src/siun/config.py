@@ -69,7 +69,7 @@ class SiunConfig(BaseModel):
         return value
 
 
-def _read_config(config_path: Path) -> dict[str, Any]:  # no cov
+def _read_config(config_path: Path) -> dict[str, Any]:  # pragma: no cover
     """Read config from disk."""
     with Path.open(config_path, "rb") as file_obj:
         return toml_load(file_obj)

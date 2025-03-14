@@ -10,7 +10,7 @@ import pytest
 from click.testing import CliRunner
 
 from siun.errors import CmdRunError, ConfigError
-from siun.main import _get_available_updates, check
+from siun.main import _get_available_updates, _get_updates, check
 from siun.state import SiunState, State
 
 EMPTY_STATE = SiunState(
@@ -225,3 +225,57 @@ class TestMain:
 
         with pytest.raises(CmdRunError), mock.patch("siun.main.subprocess.run", side_effect=FileNotFoundError()):
             _get_available_updates(":")
+
+    @mock.patch("siun.main.Updates.persist_state")
+    @mock.patch("siun.main.Updates.read_state", return_value=False)
+    @mock.patch("siun.main._update_state", return_value=False)
+    def test__get_updates_without_cache_or_update(self, mock__update_state, mock_read_state, mock_persist_state):
+        """
+        Test _get_updates with no_cache and no_update.
+
+        The CLI should already catch that no_cache and no_update are mutually
+        exclusive, but the code shouldn't fail anyway.
+        """
+        result = _get_updates(
+            no_cache=True,
+            no_update=True,
+            criteria={},
+            thresholds={},
+            cmd_available="",
+            cache_min_age_minutes=0,
+            state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+        )
+        mock__update_state.assert_not_called()
+        mock_read_state.assert_not_called()
+        mock_persist_state.assert_not_called()
+        assert result.score == 0
+
+    @mock.patch("siun.main.Updates.persist_state")
+    @mock.patch("siun.main.Updates.read_state")
+    @mock.patch("siun.main._update_state", return_value=False)
+    def test__get_updates_with_no_update_and_existing_cache(
+        self, mock__update_state, mock_read_state, mock_persist_state
+    ):
+        """Test _get_updates with no_update."""
+        existing_state = {
+            "last_update": {"py-type": "datetime", "value": "1970-01-01T01:00:00Z"},
+            "state": {"py-type": "State", "value": "OK"},
+            "thresholds": {},
+            "matched_criteria": {},
+            "available_updates": ["siun"],
+            "criteria_settings": {},
+        }
+        mock_read_state.return_value = existing_state
+        result = _get_updates(
+            no_cache=False,
+            no_update=True,
+            criteria={},
+            thresholds={},
+            cmd_available="",
+            cache_min_age_minutes=0,
+            state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+        )
+        mock__update_state.assert_not_called()
+        mock_read_state.assert_called_once()
+        mock_persist_state.assert_not_called()
+        assert result.available_updates == ["siun"]

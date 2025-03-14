@@ -66,6 +66,7 @@ def _get_updates(
     siun_state = Updates(criteria_settings=criteria, thresholds_settings=thresholds)
     if no_cache:
         if no_update:
+            # NOTE: The CLI forbids the combination of no_cache and no_update, but there is not reason to fail here
             return siun_state
 
         try:
@@ -99,7 +100,7 @@ def _get_updates(
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(__version__)
-def cli():  # noqa: D103
+def cli():  # noqa: D103 # pragma: no cover
     pass
 
 
@@ -145,5 +146,5 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool):
         click.secho(output, **output_kwargs)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     cli()
