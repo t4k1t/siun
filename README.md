@@ -43,10 +43,11 @@ The `check` command supports a few options:
 pip install siun
 ```
 
-### Install dev env
+### Development
 
 ```bash
-pip install -e .[dev]
+# Set up dev env
+uv sync
 ```
 
 ## Configuration
