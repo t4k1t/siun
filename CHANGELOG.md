@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python 3.13 as supported version
 - `state_file` README config example
 - More systemd unit & timer examples
+- A logo for the project 🎉
 
 ### Changed
 

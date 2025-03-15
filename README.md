@@ -2,8 +2,13 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/siun.svg)](https://pypi.org/project/siun)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/siun.svg)](https://pypi.org/project/siun)
+[![codecov](https://codecov.io/gh/t4k1t/siun/graph/badge.svg?token=Y5D4KX42LL)](https://codecov.io/gh/t4k1t/siun)
+
+<img height="128" alt="siun Icon" src="assets/icon/siun-icon.png" align="left">
 
 Check how urgently packages have to be upgraded.
+
+`siun` will check available updates for various criteria - like the number of updates, or important package names. Each criterion will count towards a total score which gives an indication of how urgently upgrades are required. You can also write your own criteria using Python.
 
 -----
 
