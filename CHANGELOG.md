@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - Unreleased
+## [Unreleased]
 
 ### Added
 
@@ -65,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - initial support for custom user criteria
 - config validation
 - `unkown` state when there is no persisted state on disk
+- initial PoC
+- support for config file
 
 ### Changed
 
@@ -73,23 +75,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - update query to be separate from persisting state
 - `get-state` and `write-state` subcommands into one `check` subcommand
 - project/package management from `hatch` to `rye`
+- project name
 
 ### Fixed
 
 - typo in default config
 - state file to always contains valid JSON
 - minimum python version
-
-## [0.2.0] - Unreleased
-
-### Added
-
-- initial PoC
-- support for config file
-
-### Changed
-
-- project name
 
 ### Removed
 
