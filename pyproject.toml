@@ -99,6 +99,8 @@ reportAny = false
 reportExplicitAny = false
 reportImplicitOverride = false
 reportMissingSuperCall = false
+reportMissingTypeStubs = false
+reportUnusedCallResult = false
 
 [tool.coverage.run]
 source = [
