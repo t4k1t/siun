@@ -48,6 +48,20 @@ The `check` command supports a few options:
 pip install siun
 ```
 
+### Optional features
+
+Some features require additional dependencies to work which will not be installed by default.
+
+Currently, this only applies to the `notification` feature. In order to use this feature, install `siun` with the `notification` classifier:
+
+```bash
+pip install siun[notification]
+```
+
+The `notification` feature shows a desktop notification the first time a configurable threshold is exceeded. All variables available for the custom output format can also be used to customize the notification body and title.
+
+*NOTE:* Using the `notification` feature in conjunction with the `--no-cache` flag will cause the notification to show up on every check, provided the requirements are met.
+
 ### Development
 
 ```bash
@@ -57,14 +71,14 @@ uv sync
 
 ## Configuration
 
-Configuration happens through a toml file.
+Configuration happens through a TOML file.
 
 The default configuration looks like this:
 
 ```toml
 # Command which returns list of available updates
 cmd_available = "pacman -Quq; if [ $? == 1 ]; then :; fi"  # pacman returns exit code 1 if there are no updates
-# Weight required to consider updates to be of available, warning, or critical level
+# Weight required to consider updates to be of `available`, `warning`, or `critical` level
 thresholds = { available = 1, warning = 2, critical = 3 }
 # Minimum age of cached update state before it will be refreshed
 cache_min_age_minutes = 30
@@ -72,6 +86,7 @@ cache_min_age_minutes = 30
 custom_format = "$status_text: $available_updates"
 # State file location
 state_file = "/tmp/siun-state.json"
+# Notification configuration
 
 [criteria]
 # Setting for `critical` criterion
@@ -80,11 +95,25 @@ critical_pattern = "^archlinux-keyring$|^linux$|^pacman.*$"
 critical_weight = 1
 # Setting for `count` criterion
 count_threshold = 10
-# setting weight to 0 disables check
+# Setting weight to 0 disables check
 count_weight = 0
 # Setting for `last_pacman_update` criterion
 last_pacman_update_age_hours = 618  # 7 days
 last_pacman_update_weight = 1
+
+[notification]
+# Notification body, supports format placeholders
+message = "$available_updates"
+# Notification title, supports format placeholders
+title = "$status_text"
+# Notification urgency ["low"|"normal"|"critical"]
+urgency = "normal"
+# Notification timeout, `0` means no timeout
+timeout = 10000
+# Notification icon, can be either icon name or path
+icon = "siun-icon"
+# Minimum threshold for notification to show ["available"|"warning"|"critical"]
+threshold = "available"
 ```
 
 ### Automatically run `siun check`
