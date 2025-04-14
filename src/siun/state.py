@@ -12,7 +12,6 @@ from typing import Any, final, no_type_check
 
 from pydantic import BaseModel, Field
 
-from siun.config import Threshold
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, SiunCriterion
 from siun.errors import CriterionError
 
@@ -58,14 +57,40 @@ def _load_user_criteria(*, criteria_settings: dict[str, Any], include_path: Path
     return user_criteria
 
 
-class State(Enum):
+class SortableEnum(Enum):
+    """Sortable Enum subclass."""
+
+    def __le__(self, other: Any):
+        """Make enum sortable: Less Than or Equal."""
+        if self.__class__ is other.__class__:
+            if self == other:
+                return True
+            return self.__lt__(other)
+        return NotImplemented
+
+    def __lt__(self, other: Any):
+        """Make enum sortable: Less Than."""
+        if self.__class__ is other.__class__:
+            return list(self.__class__).index(self) < list(self.__class__).index(other)
+        return NotImplemented
+
+
+class Threshold(SortableEnum):
+    """Threshold levels."""
+
+    available = "available"
+    warning = "warning"
+    critical = "critical"
+
+
+class State(SortableEnum):
     """Define update state."""
 
+    UNKNOWN = "UNKNOWN"
     OK = "OK"
     AVAILABLE_UPDATES = "AVAILABLE_UPDATES"
     WARNING_UPDATES = "WARNING_UPDATES"
     CRITICAL_UPDATES = "CRITICAL_UPDATES"
-    UNKNOWN = "UNKNOWN"
 
 
 class StateText(Enum):
@@ -188,6 +213,7 @@ class Updates:
         if matched_criteria is None:
             matched_criteria = {}
         self.matched_criteria = matched_criteria
+        self.last_state = State.UNKNOWN
         if state is None:
             state = State.UNKNOWN
         self.state = state
@@ -197,6 +223,10 @@ class Updates:
 
     def _track_update(self) -> None:
         self.last_update = datetime.datetime.now(tz=datetime.UTC)
+
+    def set_last_state(self, state: State) -> None:
+        """Set last state."""
+        self.last_state = state
 
     @property
     def score(self) -> int:

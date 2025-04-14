@@ -36,6 +36,36 @@ STALE_STATE = SiunState(
     last_update=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=1),
 )
 
+WARNING_STATE = SiunState(
+    criteria_settings={
+        "available_weight": 1,
+        "critical_weight": 0,
+        "count_weight": 0,
+        "lastupdate_weight": 0,
+    },
+    thresholds={},
+    available_updates=[],
+    matched_criteria={"available": {"weight": 1}, "count": {"weight": 1}},
+    state=State.WARNING_UPDATES,
+    last_update=datetime.datetime.now(tz=datetime.UTC),
+    last_state=State.AVAILABLE_UPDATES,
+)
+
+AVAILABLE_STATE = SiunState(
+    criteria_settings={
+        "available_weight": 1,
+        "critical_weight": 1,
+        "count_weight": 1,
+        "lastupdate_weight": 0,
+    },
+    thresholds={},
+    available_updates=[],
+    matched_criteria={"available": {"weight": 1}},
+    state=State.AVAILABLE_UPDATES,
+    last_update=datetime.datetime.now(tz=datetime.UTC),
+    last_state=State.WARNING_UPDATES,
+)
+
 CONFIG_CUSTOM_STATE_FILE_PATH = """
 state_file = "/tmp/siun-test-state.json"
 """
@@ -279,3 +309,44 @@ class TestMain:
         mock_read_state.assert_called_once()
         mock_persist_state.assert_not_called()
         assert result.available_updates == ["siun"]
+
+    @pytest.mark.feature_notification
+    @mock.patch("siun.notification.UpdateNotification.show")
+    @mock.patch("siun.main._get_available_updates", return_value=["package"])
+    @mock.patch("siun.main.get_config")
+    def test_check_notification(self, mock_get_config, mock_get_available_updates, mock_show, config_w_notification):
+        """Test check CLI command with notification."""
+        mock_get_config.return_value = config_w_notification
+        runner = CliRunner()
+        result = runner.invoke(check, ["-n"])
+        mock_get_available_updates.assert_called_once()
+        mock_show.assert_called_once()
+        assert result.exit_code == 0
+        assert result.output == "Updates available\n"
+
+    @pytest.mark.feature_notification
+    @mock.patch("siun.main.Updates.set_last_state")  # Don't update `last_state`, it's already set in the fixture
+    @mock.patch("siun.main.Updates.read_state")
+    @mock.patch("siun.notification.UpdateNotification.show")
+    @mock.patch("siun.main.get_config")
+    def test_check_notification_threshold(
+        self, mock_get_config, mock_show, mock_read_state, mock_set_last_state, config_w_notification_threshold
+    ):
+        """Test check CLI command with notification threshold set to `warning`."""
+        mock_get_config.return_value = config_w_notification_threshold
+
+        # `available` state is below notification threshold
+        mock_read_state.return_value = AVAILABLE_STATE
+        runner = CliRunner()
+        result = runner.invoke(check, ["-U"])
+        mock_show.assert_not_called()
+        assert result.exit_code == 0
+        assert result.output == "Updates available\n"
+
+        # `warning` state exceeds notification threshold
+        mock_read_state.return_value = WARNING_STATE
+        runner = CliRunner()
+        result = runner.invoke(check, ["-U"])
+        mock_show.assert_called_once()
+        assert result.exit_code == 0
+        assert result.output == "Updates recommended\n"

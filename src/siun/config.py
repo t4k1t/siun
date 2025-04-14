@@ -1,8 +1,6 @@
 """Config module."""
 
-import collections.abc
 from collections.abc import Mapping
-from enum import Enum
 from os import environ
 from pathlib import Path
 from tomllib import TOMLDecodeError
@@ -12,16 +10,10 @@ from typing import Any, no_type_check
 from pydantic import BaseModel, Field, field_validator
 
 from siun.errors import ConfigError
+from siun.notification import UpdateNotification
+from siun.state import Threshold
 
 CONFIG_PATH = Path().home() / ".config" / "siun.toml"
-
-
-class Threshold(Enum):
-    """Threshold levels."""
-
-    available = "available"
-    warning = "warning"
-    critical = "critical"
 
 
 class SiunConfig(BaseModel):
@@ -46,6 +38,7 @@ class SiunConfig(BaseModel):
     criteria: dict[str, Any]
     custom_format: str = Field(default="$status_text: $available_updates")
     state_file: Path = Field(default_factory=_default_state_file)
+    notification: UpdateNotification | None = Field(default=None)
 
     @field_validator("criteria")
     def criteria_must_have_weight(
@@ -83,7 +76,7 @@ def _update_nested(d: dict, u: dict | Mapping) -> dict:
     https://stackoverflow.com/a/3233356
     """
     for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
+        if isinstance(v, Mapping):
             d[k] = _update_nested(d.get(k, {}), v)
         else:
             d[k] = v

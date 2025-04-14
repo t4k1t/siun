@@ -20,9 +20,11 @@ from siun.errors import (
     SiunStateUpdateError,
 )
 from siun.formatting import Formatter, OutputFormat
-from siun.state import Updates
+from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
+from siun.state import State, Updates
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
+INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
 
 
 def _get_available_updates(cmd: str) -> list[str] | None:
@@ -80,6 +82,7 @@ def _get_updates(
     existing_state = Updates.read_state(state_file_path)
     if existing_state:
         siun_state = Updates(thresholds_settings=thresholds, **dict(existing_state))
+        siun_state.set_last_state(siun_state.state)
     if no_update:
         return siun_state
 
@@ -144,6 +147,21 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool):
     output, output_kwargs = getattr(formatter, f"format_{output_format}")(siun_state.format_object, **formatter_kwargs)
     if not quiet:
         click.secho(output, **output_kwargs)
+
+    notification = config.notification
+    if notification:
+        if "notification" not in INSTALLED_FEATURES:
+            message = "notifications require the 'notification' feature, install with 'pip install siun[notification]'"
+            raise SiunCLIError(message)
+
+        threshold_state = State(f"{notification.threshold.value.upper()}_UPDATES")
+        if siun_state.state <= siun_state.last_state or siun_state.state < threshold_state:
+            return
+
+        notification.fill_templates(siun_state.format_object)
+        if notification.urgency is not None:
+            notification.hints = {"urgency": notification.urgency.value}
+        notification.show()
 
 
 if __name__ == "__main__":  # pragma: no cover

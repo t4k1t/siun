@@ -102,6 +102,11 @@ reportMissingSuperCall = false
 reportMissingTypeStubs = false
 reportUnusedCallResult = false
 
+[tool.pytest.ini_options]
+markers = [
+    "feature_notification: test which require the optional 'notification' feature",
+]
+
 [tool.coverage.run]
 source = [
     "src/siun"
