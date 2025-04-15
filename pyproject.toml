@@ -47,6 +47,7 @@ dev = [
     "coverage>=7.6.1",
     "basedpyright>=1.17.2",
     "pytest-subprocess>=1.5.3",
+    "pyinstrument>=5.0.1",
 ]
 
 [tool.hatch.build.targets.wheel]
