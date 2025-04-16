@@ -28,6 +28,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
         cache-dependency-glob: "uv.lock"
+    - name: Install
+      run: |
+        uv sync --all-extras --dev
     - name: Lint
       run: |
         uv run --frozen ruff check src/
