@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Simplified state cache file format. No more custom JSON encoder/decoder required. ⚙️
+
+### Removed
+
+- Custom JSON encoder/decoder.
+
 ## [1.3.0] - 2025-04-16
 
 ### Added
