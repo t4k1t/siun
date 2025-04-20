@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 
-from siun.state import State, StateText, Updates, _load_user_criteria
+from siun.state import State, StateText, Updates, _load_user_criteria, load_state
 
 
 class TestUpdates:
@@ -51,14 +51,14 @@ class TestUpdates:
         """Test reading existing state."""
         json_content = io.StringIO(
             "{"
-            '"last_update": {"py-type": "datetime", "value": "1970-01-01T01:00:00Z"}, '
-            '"state": {"py-type": "State", "value": "OK"}, "thresholds": {}, '
+            '"last_update": "1970-01-01T01:00:00Z", '
+            '"state": "OK", "thresholds": {}, '
             '"matched_criteria": {}, "available_updates": ["siun"], "criteria_settings": {}'
             "}"
         )
         mock_open.return_value = json_content
         mock_file = mock.MagicMock()
-        updates = Updates.read_state(mock_file)
+        updates = load_state(mock_file)
 
         assert updates
         assert updates.available_updates == ["siun"]
@@ -68,14 +68,14 @@ class TestUpdates:
         """Test loading state from disk handles custom types."""
         json_content = io.StringIO(
             "{"
-            '"last_update": {"py-type": "datetime", "value": "1970-01-01T01:00:00Z"}, '
-            '"state": {"py-type": "State", "value": "OK"}, "thresholds": {}, '
+            '"last_update": "1970-01-01T01:00:00Z", '
+            '"state": "OK", "thresholds": {}, '
             '"matched_criteria": {}, "available_updates": [], "criteria_settings": {}'
             "}"
         )
         mock_open.return_value = json_content
         mock_file = mock.MagicMock()
-        updates = Updates.read_state(mock_file)
+        updates = load_state(mock_file)
 
         assert updates
         assert updates.available_updates == []
@@ -95,8 +95,8 @@ class TestUpdates:
         updates.persist_state(state_file_path=state_file_path)
 
         content = json.loads(state_file_path.read_text())
-        assert content["last_update"]["py-type"] == "datetime"
-        assert content["state"]["py-type"] == "State"
+        assert datetime.datetime.fromisoformat(content["last_update"]) == last_update
+        assert content["state"] == "WARNING_UPDATES"
 
 
 class TestCustomCriteria:

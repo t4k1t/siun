@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""siun - check for updates."""
+"""siun - check available updates for urgency."""
 
 import datetime
 import subprocess
@@ -10,7 +10,7 @@ from typing import Any
 import click
 
 from siun import __version__
-from siun.config import Threshold, get_config
+from siun.config import get_config
 from siun.errors import (
     CmdRunError,
     ConfigError,
@@ -21,7 +21,7 @@ from siun.errors import (
 )
 from siun.formatting import Formatter, OutputFormat
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
-from siun.state import State, Updates
+from siun.state import State, Threshold, Updates, load_state
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
@@ -65,7 +65,9 @@ def _get_updates(
     cache_min_age_minutes: int,
     state_file_path: Path,
 ) -> Updates:
-    siun_state = Updates(criteria_settings=criteria, thresholds_settings=thresholds)
+    siun_state = Updates(
+        criteria_settings=criteria, thresholds_settings={t.value: val for t, val in thresholds.items()}
+    )
     if no_cache:
         if no_update:
             # NOTE: The CLI forbids the combination of no_cache and no_update, but there is not reason to fail here
@@ -79,14 +81,15 @@ def _get_updates(
 
     now = datetime.datetime.now(tz=datetime.UTC)
     cache_min_age = datetime.timedelta(minutes=cache_min_age_minutes)
-    existing_state = Updates.read_state(state_file_path)
+    existing_state = load_state(state_file_path)
     if existing_state:
-        siun_state = Updates(thresholds_settings=thresholds, **dict(existing_state))
-        siun_state.set_last_state(siun_state.state)
+        siun_state = existing_state
+        siun_state.last_state = siun_state.state
     if no_update:
         return siun_state
 
     is_stale = existing_state and existing_state.last_update < (now - cache_min_age)
+
     if not existing_state or (existing_state and is_stale):
         try:
             _update_state(siun_state, cmd_available)

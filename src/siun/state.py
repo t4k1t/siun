@@ -2,13 +2,12 @@
 
 import datetime
 import importlib.util
-import json
 import shutil
 import tempfile
 from enum import Enum
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
-from typing import Any, final, no_type_check
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -113,17 +112,6 @@ class StateColor(Enum):
     UNKNOWN = "magenta"
 
 
-class SiunState(BaseModel):
-    """Internal state struct."""
-
-    criteria_settings: dict[str, Any]
-    thresholds: dict[int, str]
-    available_updates: list[str]
-    matched_criteria: dict[str, dict[str, Any]]
-    state: State
-    last_update: datetime.datetime
-
-
 class FormatObject(BaseModel):
     """Objects for output formatting."""
 
@@ -139,94 +127,21 @@ class FormatObject(BaseModel):
     state_name: str = Field(exclude=True)
 
 
-class StateEncoder(json.JSONEncoder):
-    """
-    Custom state encoder.
+class Updates(BaseModel):
+    """Internale state struct."""
 
-    Serializes Enum and datetime types to JSON.
-    """
+    criteria_settings: dict[str, Any] = {}
+    thresholds_settings: dict[str, int] = {}
+    thresholds: dict[int, str] = {}
+    available_updates: list[str] = []
+    matched_criteria: dict[str, dict[str, Any]] = {}
+    state: State = State.UNKNOWN
+    last_state: State = State.UNKNOWN
+    last_update: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
 
-    @no_type_check
-    def default(self, o):
-        """Override to support more types."""
-        if isinstance(o, Enum):
-            return {"py-type": type(o).__name__, "value": o.value}
-        if isinstance(o, datetime.datetime):
-            return {"py-type": type(o).__name__, "value": o.isoformat()}
-
-        return json.JSONEncoder.default(self, o)
-
-
-class StateDecoder(json.JSONDecoder):
-    """
-    Custom state decoder.
-
-    Deserialize custom python types from JSON.
-    """
-
-    @no_type_check
-    def __init__(self, *args, **kwargs):  # noqa: D107
-        json.JSONDecoder.__init__(self, *args, **kwargs, object_hook=self._custom_object_hook)
-
-    @no_type_check
-    def _custom_object_hook(self, o):
-        pytype = o.get("py-type")
-        if not pytype:
-            return o
-
-        if pytype == "datetime":
-            return datetime.datetime.fromisoformat(o["value"])
-        elif pytype in [StateText.__name__, StateColor.__name__, State.__name__]:
-            t = globals()[pytype]
-            return t(o["value"])
-        else:
-            raise NotImplementedError
-
-
-@final
-class Updates:
-    """Handle available updates."""
-
-    def __init__(
-        self,
-        *,
-        criteria_settings: dict[str, Any],
-        thresholds_settings: dict[Threshold, int],
-        available_updates: list[str] | None = None,
-        matched_criteria: dict[str, dict[str, Any]] | None = None,
-        state: State | None = None,
-        last_update: datetime.datetime | None = None,
-        thresholds: dict[int, str] | None = None,
-    ):
-        """Set up initial update state."""
-        self.criteria_settings = criteria_settings
-        if thresholds is None:
-            thresholds = {
-                threshold: State(f"{name.value.upper()}_UPDATES").name
-                for name, threshold in thresholds_settings.items()
-            }
-        self.thresholds = thresholds
-
-        if available_updates is None:
-            available_updates = []
-        self.available_updates = available_updates
-        if matched_criteria is None:
-            matched_criteria = {}
-        self.matched_criteria = matched_criteria
-        self.last_state = State.UNKNOWN
-        if state is None:
-            state = State.UNKNOWN
-        self.state = state
-        if last_update is None:
-            last_update = datetime.datetime.now(tz=datetime.UTC)
-        self.last_update = last_update
-
-    def _track_update(self) -> None:
+    def touch(self) -> None:
+        """Set last_update to now."""
         self.last_update = datetime.datetime.now(tz=datetime.UTC)
-
-    def set_last_state(self, state: State) -> None:
-        """Set last state."""
-        self.last_state = state
 
     @property
     def score(self) -> int:
@@ -265,7 +180,7 @@ class Updates:
 
     def update(self, available_updates: list[str] | None = None) -> None:
         """Update state of updates."""
-        self._track_update()
+        self.touch()
         if available_updates is None:
             available_updates = []
 
@@ -293,8 +208,13 @@ class Updates:
                 message = str(error)
                 raise CriterionError(message, name) from error
 
-        thresholds = reversed(self.thresholds.keys())
-        for threshold in thresholds:
+        thresholds = {
+            threshold: State(f"{name.upper()}_UPDATES").name for name, threshold in self.thresholds_settings.items()
+        }
+        self.thresholds = thresholds
+
+        reversed_thresholds = reversed(self.thresholds.keys())
+        for threshold in reversed_thresholds:
             if self.score >= threshold:
                 self.state = State(self.thresholds[threshold])
                 break
@@ -312,15 +232,15 @@ class Updates:
             # Create parent dir for state file path if it doesn't exist
             Path.mkdir(Path(state_file_path.parent))
         with tempfile.NamedTemporaryFile(mode="w+") as update_file:
-            json.dump(self.__dict__, update_file, cls=StateEncoder)
+            update_file.write(self.model_dump_json())
             update_file.flush()
             shutil.copy(update_file.name, state_file_path)
 
-    @classmethod
-    def read_state(cls, state_file_path: Path) -> SiunState | None:
-        """Read state from disk."""
-        if not state_file_path.exists():
-            return None
 
-        with Path.open(state_file_path) as update_file:
-            return SiunState(**json.load(update_file, cls=StateDecoder))
+def load_state(state_file_path: Path) -> Updates | None:
+    """Read state from disk."""
+    if not state_file_path.exists():
+        return None
+
+    with Path.open(state_file_path) as update_file:
+        return Updates.model_validate_json(update_file.read())
