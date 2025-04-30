@@ -9,7 +9,7 @@ from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, SiunCriterion
 from siun.errors import CriterionError
@@ -239,8 +239,25 @@ class Updates(BaseModel):
 
 def load_state(state_file_path: Path) -> Updates | None:
     """Read state from disk."""
+
+    def is_pytype_error(err_input: Any):
+        if not isinstance(err_input, dict):
+            return False
+        if "py-type" in err_input:
+            return True
+
     if not state_file_path.exists():
         return None
 
     with Path.open(state_file_path) as update_file:
-        return Updates.model_validate_json(update_file.read())
+        try:
+            return Updates.model_validate_json(update_file.read())
+        except ValidationError as error:
+            # Handle state file from siun<=1.3.0
+            pytype_errors = [is_pytype_error(err.get("input")) for err in error.errors()]
+            if all(pytype_errors):
+                # Treat state as unknown, it'll get fixed automatically next time a write occurs
+                return None
+            else:
+                # Raise normally if anything else is wrong with the state file
+                raise error
