@@ -81,6 +81,22 @@ class TestUpdates:
         assert updates.available_updates == []
         assert updates.state == State.OK
 
+    @mock.patch("siun.state.Path.open")
+    def test_read_state_handles_deprecated_custom_types(self, mock_open):
+        """Test loading state from disk handles custom types."""
+        json_content = io.StringIO(
+            "{"
+            '"last_update": "1970-01-01T01:00:00Z", '
+            '"state": {"py-type": "State", "value": "OK"}, "thresholds": {}, '
+            '"matched_criteria": {}, "available_updates": [], "criteria_settings": {}'
+            "}"
+        )
+        mock_open.return_value = json_content
+        mock_file = mock.MagicMock()
+        updates = load_state(mock_file)
+
+        assert updates is None  # Deprecated type is treated like unknown state
+
     def test_write_state_handles_custom_types(self, tmp_path, default_config, default_thresholds):
         """Test custom types can be serialized to disk."""
         last_update = datetime.datetime.now(tz=datetime.UTC)
