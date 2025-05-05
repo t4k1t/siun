@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""siun - check available updates for urgency."""
+"""siun - Know how urgently your system needs to be updated."""
 
 import datetime
 import subprocess
