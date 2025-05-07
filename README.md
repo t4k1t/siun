@@ -132,6 +132,12 @@ cmd_available = "checkupdates --nocolor | cut -d ' ' -f1"
 
 *NOTE: The pipe to `cut` can be removed to also get a diff of version numbers - but for basic operation this is not required*
 
+`checkupdates` can be combined with [`aur-check-updates`](https://aur.archlinux.org/packages/aur-check-updates) in order to also take AUR packages into account:
+
+```toml
+cmd_available = "{ checkupdates --nocolor; aur-check-updates -n --raw; } | cut -d ' ' -f1"
+```
+
 #### systemd unit & timer
 
 Since the default configuration gets the list of available package updates from `pacman` without syncing, it might be useful to define a system unit & timer which automatically updates the local `pacman` database. Find `pacman-sync.service` and `pacman-sync.timer` in [examples/systemd](examples/systemd) for examples of such.
