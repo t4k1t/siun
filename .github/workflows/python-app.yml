@@ -33,7 +33,7 @@ jobs:
         sudo apt install -y dbus
     - name: Install
       run: |
-        uv sync --dev
+        uv sync --all-extras --dev
     - name: Lint
       run: |
         uv run --frozen ruff check src/
