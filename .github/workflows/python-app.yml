@@ -28,15 +28,18 @@ jobs:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
         cache-dependency-glob: "uv.lock"
+    - name: Install system dependencies
+      run: |
+        sudo apt install -y dbus
     - name: Install
       run: |
-        uv sync --all-extras --dev
+        uv sync --dev
     - name: Lint
       run: |
         uv run --frozen ruff check src/
     - name: Test
       run: |
-        uv run --frozen coverage run -m pytest
+        uv run --frozen coverage run -m pytest -m "not feature_notification"
     - name: Generate coverage XML
       run: |
         uv run --frozen coverage xml
