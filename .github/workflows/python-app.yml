@@ -30,7 +30,7 @@ jobs:
         cache-dependency-glob: "uv.lock"
     - name: Install system dependencies
       run: |
-        sudo apt install -y dbus
+        sudo apt install -y python3-dbus
     - name: Install
       run: |
         uv sync --all-extras --dev
