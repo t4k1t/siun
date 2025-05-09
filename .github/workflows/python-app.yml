@@ -39,7 +39,7 @@ jobs:
         uv run --frozen ruff check src/
     - name: Test
       run: |
-        uv run --frozen coverage run -m pytest -m "not feature_notification"
+        uv run --frozen coverage run -m pytest
     - name: Generate coverage XML
       run: |
         uv run --frozen coverage xml
