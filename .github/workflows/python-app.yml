@@ -5,9 +5,9 @@ name: Python application
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "release/*" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "release/*" ]
 
 permissions:
   contents: read
@@ -28,6 +28,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
         cache-dependency-glob: "uv.lock"
+    - name: Install system dependencies
+      run: |
+        sudo apt install -y build-essential libpython3-dev libdbus-1-dev libglib2.0-dev
     - name: Install
       run: |
         uv sync --all-extras --dev
