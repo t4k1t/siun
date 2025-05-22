@@ -13,11 +13,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
+        persist-credentials: false
         fetch-depth: 0
     - name: Mirror repository
-      uses: yesolutions/mirror-action@v0.7.0
+      uses: yesolutions/mirror-action@1708f16cdb28634fd3ba10c5c79abc91f5578a14 # v0.7.0
       with:
         REMOTE: git@codeberg.org:lokimotive/siun.git
         GIT_SSH_PRIVATE_KEY: ${{ secrets.CODEBERG_SSH_KEY }}
