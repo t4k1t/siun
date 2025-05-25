@@ -3,12 +3,14 @@
 import datetime
 import io
 import json
+from os import environ
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
 from siun.state import State, StateText, Updates, _load_user_criteria, load_state
+from siun.util import get_default_criteria_dir
 
 
 class TestUpdates:
@@ -147,3 +149,13 @@ class TestCustomCriteria:
         user_criteria = _load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
         assert isinstance(user_criteria, dict)
         assert "test_criterion" not in user_criteria
+
+    def test__default_criteria_dir(self):
+        with mock.patch.dict(environ, clear=True):
+            environ["XDG_CONFIG_HOME"] = "/tmp/siun-tests/config"  # noqa: S108
+            assert get_default_criteria_dir() == Path("/tmp/siun-tests/config/siun/criteria")  # noqa: S108
+
+    def test__default_criteria_dir_wo_config_home(self):
+        with mock.patch.dict(environ, clear=True):
+            environ["HOME"] = "/tmp/siun-tests/no_config_home"  # noqa: S108
+            assert get_default_criteria_dir() == Path("/tmp/siun-tests/no_config_home/.config/siun/criteria")  # noqa: S108

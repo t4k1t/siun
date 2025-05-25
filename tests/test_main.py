@@ -230,7 +230,7 @@ class TestMain:
         mock_read_state.return_value = False
         runner = CliRunner()
         with mock.patch(
-            "siun.config.CONFIG_PATH"
+            "siun.config.get_default_config_dir"
         ):  # NOTE: Required because get_config only tries to read the config file when it exists
             result = runner.invoke(check)
 

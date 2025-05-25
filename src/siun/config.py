@@ -1,7 +1,6 @@
 """Config module."""
 
 from collections.abc import Mapping
-from os import environ
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as toml_load
@@ -12,23 +11,11 @@ from pydantic import BaseModel, Field, field_validator
 from siun.errors import ConfigError
 from siun.notification import UpdateNotification
 from siun.state import Threshold
-
-CONFIG_PATH = Path().home() / ".config" / "siun.toml"
+from siun.util import get_default_config_dir, get_default_state_path
 
 
 class SiunConfig(BaseModel):
     """Config struct."""
-
-    @staticmethod
-    def _default_state_file() -> Path:
-        """
-        Provide default value for state_file setting.
-
-        By default, siun will try the following in order:
-        1. `$XDG_STATE_HOME/siun/state.json`
-        2. `$HOME/.local/state/siun/state.json`
-        """
-        return Path(environ.get("XDG_STATE_HOME", Path.home() / Path(".local/state"))) / Path("siun/state.json")
 
     cmd_available: str = Field(default="pacman -Quq")
     cache_min_age_minutes: int = Field(default=30)
@@ -37,7 +24,7 @@ class SiunConfig(BaseModel):
     )
     criteria: dict[str, Any]
     custom_format: str = Field(default="$status_text: $available_updates")
-    state_file: Path = Field(default_factory=_default_state_file)
+    state_file: Path = Field(default_factory=get_default_state_path)
     notification: UpdateNotification | None = Field(default=None)
 
     @field_validator("criteria")
@@ -85,7 +72,8 @@ def _update_nested(d: dict, u: dict | Mapping) -> dict:
 
 def get_config() -> SiunConfig:
     """Get config from defaults and user supplied values."""
-    config_path = CONFIG_PATH
+    # TODO: Migrate siun.toml to new location if found
+    config_path = get_default_config_dir() / Path("config.toml")
     # NOTE: `criteria` setting doesn't get its default value from the model
     # because we want to allow partial configuration
     config_dict: dict[str, Any] = {

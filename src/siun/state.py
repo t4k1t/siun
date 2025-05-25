@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, SiunCriterion
 from siun.errors import CriterionError
+from siun.util import get_default_criteria_dir
 
 BUILTIN_CRITERIA = {
     "available": CriterionAvailable(),
@@ -27,7 +28,7 @@ def _load_user_criteria(*, criteria_settings: dict[str, Any], include_path: Path
     user_criteria: dict[str, SiunCriterion] = {}
     enabled_criteria: list[str] = []
     if not include_path:
-        include_path = Path().home() / ".config" / "siun" / "criteria"
+        include_path = get_default_criteria_dir()
 
     if not include_path.exists() or not include_path.is_dir():
         return user_criteria

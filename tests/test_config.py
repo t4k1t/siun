@@ -42,7 +42,7 @@ class TestConfig:
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_MISSING_WEIGHTS))
     def test_missing_weights(self, mock_read_config):
         """Test user config with missing weights."""
-        with mock.patch("siun.config.CONFIG_PATH"), pytest.raises(ValidationError) as exc_info:
+        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ValidationError) as exc_info:
             get_config()
 
         mock_read_config.assert_called_once()
@@ -51,7 +51,7 @@ class TestConfig:
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
     def test_custom_state_file_path(self, mock_read_config, default_config):
         """Test user config with missing weights."""
-        with mock.patch("siun.config.CONFIG_PATH"):
+        with mock.patch("siun.config.get_default_config_dir"):
             config = get_config()
         assert config != default_config
         assert config.state_file == Path("/tmp/siun-test-state.json")  # noqa: S108
