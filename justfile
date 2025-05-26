@@ -20,5 +20,9 @@ alias ta := testall
 
 # build dist
 @build: clean
-    echo "Building dist"
+    echo "Building dist…""
     uv build
+
+@upgrade:
+    echo "Upgrading dependencies…"
+    uv lock --upgrade
