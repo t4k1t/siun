@@ -1,5 +1,6 @@
 """Config module."""
 
+import shutil
 from collections.abc import Mapping
 from pathlib import Path
 from tomllib import TOMLDecodeError
@@ -70,10 +71,16 @@ def _update_nested(d: dict, u: dict | Mapping) -> dict:
     return d
 
 
+def _migrate_legacy_config(config_path: Path):
+    legacy_config_path = Path().home() / ".config" / "siun.toml"
+    if not config_path.exists() and legacy_config_path.exists() and legacy_config_path.is_file():
+        shutil.copy2(legacy_config_path, config_path)
+
+
 def get_config() -> SiunConfig:
     """Get config from defaults and user supplied values."""
-    # TODO: Migrate siun.toml to new location if found
     config_path = get_default_config_dir() / Path("config.toml")
+    _migrate_legacy_config(config_path)
     # NOTE: `criteria` setting doesn't get its default value from the model
     # because we want to allow partial configuration
     config_dict: dict[str, Any] = {
