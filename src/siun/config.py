@@ -77,9 +77,10 @@ def _migrate_legacy_config(config_path: Path):
         shutil.copy2(legacy_config_path, config_path)
 
 
-def get_config() -> SiunConfig:
+def get_config(config_path: Path | None = None) -> SiunConfig:
     """Get config from defaults and user supplied values."""
-    config_path = get_default_config_dir() / Path("config.toml")
+    if config_path is None:
+        config_path = get_default_config_dir() / Path("config.toml")
     _migrate_legacy_config(config_path)
     # NOTE: `criteria` setting doesn't get its default value from the model
     # because we want to allow partial configuration

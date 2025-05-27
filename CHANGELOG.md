@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Automatically migrate config from legacy location
+- Added `--config-path` option which allows providing a custom config file location
 
 ### Changed
 

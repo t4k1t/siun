@@ -111,20 +111,26 @@ def cli():  # noqa: D103 # pragma: no cover
 
 
 @cli.command()
+@click.option(
+    "--config-path",
+    "-C",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+    help="Override config file location",
+)
 @click.option("--quiet", "-q", is_flag=True, show_default=True, default=False, help="Suppress output")
 @click.option("--no-update", "-U", is_flag=True, show_default=True, default=False, help="Don't get updates, only check")
 @click.option("--cache/--no-cache", " /-n", show_default=True, default=True, help="Ignore existing state on disk")
 @click.option(
     "--output-format", "-o", default="plain", type=click.Choice([of.value for of in OutputFormat], case_sensitive=False)
 )
-def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool):
+def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool, config_path: Path):
     """Check for urgency of available updates."""
     if no_update and not cache:
         raise SiunCLIError(message="--no-update and --no-cache options are mutually exclusive")
 
     config = None
     try:
-        config = get_config()
+        config = get_config(config_path)
     except ConfigError as error:
         message = f"{error.message}; config path: {error.config_path}"
         raise SiunCLIError(message) from error

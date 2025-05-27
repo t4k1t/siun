@@ -2,6 +2,7 @@
 
 import datetime
 import subprocess
+import tempfile
 import tomllib
 from pathlib import Path
 from unittest import mock
@@ -71,6 +72,25 @@ class TestMain:
         mock_get_config.return_value = default_config
         runner = CliRunner()
         result = runner.invoke(check, ["-n"])
+        mock_read_state.assert_not_called()
+        mock_persist_state.assert_not_called()
+        mock_get_available_updates.assert_called_once()
+        assert result.exit_code == 0
+        assert result.output == "Ok\n"
+
+    @mock.patch("siun.main.Updates.persist_state")
+    @mock.patch("siun.main.load_state")
+    @mock.patch("siun.main._get_available_updates", return_value=[])
+    @mock.patch("siun.main.get_config")
+    def test_check_with_config_path_option(
+        self, mock_get_config, mock_get_available_updates, mock_read_state, mock_persist_state, default_config
+    ):
+        """Test --config-path CLI option."""
+        mock_get_config.return_value = default_config
+        runner = CliRunner()
+        with tempfile.NamedTemporaryFile(mode="r") as config_path:
+            result = runner.invoke(check, ["-n", "-C", config_path.name])
+            mock_get_config.assert_called_once_with(Path(config_path.name))
         mock_read_state.assert_not_called()
         mock_persist_state.assert_not_called()
         mock_get_available_updates.assert_called_once()
@@ -186,13 +206,13 @@ class TestMain:
         """Test check CLI command failing to get available updates."""
         mock_read_state.return_value = state_stale
         mock_get_config.return_value = default_config
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         result = runner.invoke(check, ["-n"])
         mock_read_state.assert_not_called()
         mock_persist_state.assert_not_called()
         mock_get_available_updates.assert_called_once()
         assert result.exit_code == 1
-        assert result.output == ""
+        assert result.stdout == ""
         assert result.stderr == "Error: failed to query available updates: Fuuu\n"
 
     @mock.patch("siun.main.Updates.persist_state")
@@ -319,6 +339,18 @@ class TestMain:
         mock_read_state.assert_called_once()
         mock_persist_state.assert_not_called()
         assert result.available_updates == ["siun"]
+
+    @mock.patch("siun.main.INSTALLED_FEATURES", [])
+    @mock.patch("siun.main._get_available_updates", return_value=["package"])
+    @mock.patch("siun.main.get_config")
+    def test_check_notification_wo_feature(self, mock_get_config, mock_get_available_updates, config_w_notification):
+        """Test check CLI command with notification."""
+        mock_get_config.return_value = config_w_notification
+        runner = CliRunner()
+        result = runner.invoke(check, ["-n"])
+        mock_get_available_updates.assert_called_once()
+        assert result.exit_code == 1
+        assert result.stderr.startswith("Error: notifications require the 'notification' feature") is True
 
     @pytest.mark.feature_notification
     @mock.patch("siun.notification.UpdateNotification.show")
