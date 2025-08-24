@@ -18,7 +18,7 @@ from siun.util import get_default_config_dir, get_default_state_path
 class SiunConfig(BaseModel):
     """Config struct."""
 
-    cmd_available: str = Field(default="pacman -Quq")
+    cmd_available: str = Field(default="pacman -Quq; if [ $? == 1 ]; then :; fi")
     cache_min_age_minutes: int = Field(default=30)
     thresholds: dict[Threshold, int] = Field(
         default={Threshold.available: 1, Threshold.warning: 2, Threshold.critical: 3}
