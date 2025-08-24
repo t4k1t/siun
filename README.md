@@ -71,50 +71,12 @@ uv sync
 
 ## Configuration
 
-Configuration happens through a TOML file.
+Configuration happens through a TOML file. By default, `siun` will try to read the following files in order:
 
-The default configuration looks like this:
+1. `$XDG_CONFIG_HOME/siun/config.toml`
+2. `$HOME/.config/siun/config.toml`
 
-```toml
-# Command which returns list of available updates
-cmd_available = "pacman -Quq; if [ $? == 1 ]; then :; fi"  # pacman returns exit code 1 if there are no updates
-# Weight required to consider updates to be of `available`, `warning`, or `critical` level
-thresholds = { available = 1, warning = 2, critical = 3 }
-# Minimum age of cached update state before it will be refreshed
-cache_min_age_minutes = 30
-# Custom output format - use with `--output-format=custom`
-custom_format = "$status_text: $available_updates"
-# State file location
-state_file = "/tmp/siun-state.json"
-# Notification configuration
-
-[criteria]
-# Setting for `critical` criterion
-critical_pattern = "^archlinux-keyring$|^linux$|^pacman.*$"
-# Weight the criterion contributes to urgency score
-critical_weight = 1
-# Setting for `count` criterion
-count_threshold = 10
-# Setting weight to 0 disables check
-count_weight = 0
-# Setting for `last_pacman_update` criterion
-last_pacman_update_age_hours = 618  # 7 days
-last_pacman_update_weight = 1
-
-[notification]
-# Notification body, supports format placeholders
-message = "$available_updates"
-# Notification title, supports format placeholders
-title = "$status_text"
-# Notification urgency ["low"|"normal"|"critical"]
-urgency = "normal"
-# Notification timeout, `0` means no timeout
-timeout = 10000
-# Notification icon, can be either icon name or path
-icon = "siun-icon"
-# Minimum threshold for notification to show ["available"|"warning"|"critical"]
-threshold = "available"
-```
+See [examples/config.toml](examples/config.toml) for an example config. This example config also contains the default values which will be used if `siun` can't find any usable configuration.
 
 ### Automatically run `siun check`
 

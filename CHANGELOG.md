@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated dependencies
+- Updated README & example config
+- Changed default `cmd_available` setting to documented value
 
 ## [1.5.0] - 2025-05-30
 
