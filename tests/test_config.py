@@ -37,7 +37,7 @@ class TestConfig:
         config = get_config()
 
         assert config == default_config
-        assert config.cmd_available == "pacman -Quq"
+        assert config.cmd_available == "pacman -Quq; if [ $? == 1 ]; then :; fi"
 
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_MISSING_WEIGHTS))
     def test_missing_weights(self, mock_read_config):

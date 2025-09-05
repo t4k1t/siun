@@ -19,7 +19,7 @@ def default_thresholds():
 def default_config(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        cmd_available="pacman -Quq",
+        cmd_available="pacman -Quq; if [ $? == 1 ]; then :; fi",
         cache_min_age_minutes=30,
         thresholds=default_thresholds,
         criteria={
