@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, SiunCriterion
 from siun.errors import CriterionError
+from siun.models import V2Threshold
 from siun.util import get_default_criteria_dir
 
 BUILTIN_CRITERIA = {
@@ -132,8 +133,7 @@ class Updates(BaseModel):
     """Internale state struct."""
 
     criteria_settings: dict[str, Any] = {}
-    thresholds_settings: dict[str, int] = {}
-    thresholds: dict[int, str] = {}
+    thresholds: list[V2Threshold] = []
     available_updates: list[str] = []
     matched_criteria: dict[str, dict[str, Any]] = {}
     state: State = State.UNKNOWN
@@ -209,15 +209,9 @@ class Updates(BaseModel):
                 message = str(error)
                 raise CriterionError(message, name) from error
 
-        thresholds = {
-            threshold: State(f"{name.upper()}_UPDATES").name for name, threshold in self.thresholds_settings.items()
-        }
-        self.thresholds = thresholds
-
-        reversed_thresholds = reversed(self.thresholds.keys())
-        for threshold in reversed_thresholds:
-            if self.score >= threshold:
-                self.state = State(self.thresholds[threshold])
+        for threshold in self.thresholds:
+            if self.score >= threshold.score:
+                self.state = State(f"{threshold.name.upper()}_UPDATES")
                 break
             self.state = State("OK")
 
@@ -233,7 +227,7 @@ class Updates(BaseModel):
             # Create parent dir for state file path if it doesn't exist
             Path.mkdir(Path(state_file_path.parent))
         with tempfile.NamedTemporaryFile(mode="w+") as update_file:
-            update_file.write(self.model_dump_json())
+            update_file.write(self.model_dump_json(exclude={"thresholds"}))
             update_file.flush()
             shutil.copy(update_file.name, state_file_path)
 

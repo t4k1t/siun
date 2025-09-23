@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from siun.config import SiunConfig, Threshold
+from siun.config import SiunConfig, get_default_thresholds
 from siun.state import State, Updates
 
 
 @pytest.fixture(scope="module")
 def default_thresholds():
     """Provide default thresholds."""
-    return {Threshold.available: 1, Threshold.warning: 2, Threshold.critical: 3}
+    return get_default_thresholds()
 
 
 @pytest.fixture(scope="module")

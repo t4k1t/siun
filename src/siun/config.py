@@ -7,12 +7,21 @@ from tomllib import TOMLDecodeError
 from tomllib import load as toml_load
 from typing import Any, no_type_check
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 from siun.errors import ConfigError
+from siun.models import V2Threshold
 from siun.notification import UpdateNotification
-from siun.state import Threshold
 from siun.util import get_default_config_dir, get_default_state_path
+
+
+def get_default_thresholds() -> list[V2Threshold]:
+    """Backwards compatible default thresholds."""
+    return [
+        V2Threshold(name="critical", score=3, color="red"),
+        V2Threshold(name="warning", score=2, color="yellow"),
+        V2Threshold(name="available", score=1, color="green"),
+    ]
 
 
 class SiunConfig(BaseModel):
@@ -20,13 +29,35 @@ class SiunConfig(BaseModel):
 
     cmd_available: str = Field(default="pacman -Quq; if [ $? == 1 ]; then :; fi")
     cache_min_age_minutes: int = Field(default=30)
-    thresholds: dict[Threshold, int] = Field(
-        default={Threshold.available: 1, Threshold.warning: 2, Threshold.critical: 3}
-    )
+    v2_thresholds: list[V2Threshold] = Field(default_factory=get_default_thresholds)
     criteria: dict[str, Any]
     custom_format: str = Field(default="$status_text: $available_updates")
     state_file: Path = Field(default_factory=get_default_state_path)
     notification: UpdateNotification | None = Field(default=None)
+
+    @computed_field
+    @property
+    def sorted_thresholds(self) -> list[V2Threshold]:
+        """
+        Sort thresholds by descending score.
+
+        This makes it easier to find the highest threshold that matches later.
+        """
+        return sorted(self.v2_thresholds, key=lambda item: item.score, reverse=True)
+
+    @field_validator("v2_thresholds")
+    def thresholds_must_have_unique_name(cls, value: list[V2Threshold]) -> list[V2Threshold]:
+        """
+        Check if all thresholds have a unique name.
+
+        The name doubles as ID.
+        """
+        unique_names = {obj.name for obj in value}
+        if len(unique_names) != len(value):
+            message = "each thresholds must have a unique name."
+            raise ValueError(message)
+
+        return value
 
     @field_validator("criteria")
     def criteria_must_have_weight(

@@ -20,8 +20,9 @@ from siun.errors import (
     SiunStateUpdateError,
 )
 from siun.formatting import Formatter, OutputFormat
+from siun.models import V2Threshold
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
-from siun.state import State, Threshold, Updates, load_state
+from siun.state import State, Updates, load_state
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
@@ -61,13 +62,11 @@ def _get_updates(
     no_update: bool,
     cmd_available: str,
     criteria: dict[str, Any],
-    thresholds: dict[Threshold, int],
+    thresholds: list[V2Threshold],
     cache_min_age_minutes: int,
     state_file_path: Path,
 ) -> Updates:
-    siun_state = Updates(
-        criteria_settings=criteria, thresholds_settings={t.value: val for t, val in thresholds.items()}
-    )
+    siun_state = Updates(criteria_settings=criteria, thresholds=thresholds)
     if no_cache:
         if no_update:
             # NOTE: The CLI forbids the combination of no_cache and no_update, but there is not reason to fail here
@@ -142,7 +141,7 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool, conf
             no_update=no_update,
             cmd_available=cmd_available,
             criteria=config.criteria,
-            thresholds=config.thresholds,
+            thresholds=config.sorted_thresholds,
             cache_min_age_minutes=config.cache_min_age_minutes,
             state_file_path=config.state_file,
         )

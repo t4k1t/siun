@@ -16,7 +16,7 @@ from siun.state import State, Updates
 
 EMPTY_STATE = Updates(
     criteria_settings={},
-    thresholds={},
+    thresholds=[],
     available_updates=[],
     matched_criteria={},
     state=State.OK,
@@ -30,7 +30,7 @@ WARNING_STATE = Updates(
         "count_weight": 0,
         "lastupdate_weight": 0,
     },
-    thresholds={},
+    thresholds=[],
     available_updates=[],
     matched_criteria={"available": {"weight": 1}, "count": {"weight": 1}},
     state=State.WARNING_UPDATES,
@@ -45,7 +45,7 @@ AVAILABLE_STATE = Updates(
         "count_weight": 1,
         "lastupdate_weight": 0,
     },
-    thresholds={},
+    thresholds=[],
     available_updates=[],
     matched_criteria={"available": {"weight": 1}},
     state=State.AVAILABLE_UPDATES,
@@ -300,7 +300,7 @@ class TestMain:
             no_cache=True,
             no_update=True,
             criteria={},
-            thresholds={},
+            thresholds=[],
             cmd_available="",
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
@@ -320,7 +320,7 @@ class TestMain:
         existing_state = Updates(
             last_update="1970-01-01T01:00:00Z",
             state="OK",
-            thresholds={},
+            thresholds=[],
             matched_criteria={},
             available_updates=["siun"],
             criteria_settings={},
@@ -330,7 +330,7 @@ class TestMain:
             no_cache=False,
             no_update=True,
             criteria={},
-            thresholds={},
+            thresholds=[],
             cmd_available="",
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108

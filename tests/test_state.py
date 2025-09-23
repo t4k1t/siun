@@ -18,7 +18,7 @@ class TestUpdates:
 
     def test_defaults_ok(self, default_config, default_thresholds):
         """Test no available updates."""
-        updates = Updates(thresholds_settings=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
         updates.update(available_updates=[])
         result = updates.text_value
 
@@ -26,7 +26,7 @@ class TestUpdates:
 
     def test_defaults_available(self, default_config, default_thresholds):
         """Test available updates."""
-        updates = Updates(thresholds_settings=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
         updates.update(available_updates=["siun"])
         result = updates.text_value
 
@@ -34,7 +34,7 @@ class TestUpdates:
 
     def test_defaults_recommended(self, default_config, default_thresholds):
         """Test recommended updates."""
-        updates = Updates(thresholds_settings=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
         updates.update(available_updates=["siun", "linux"])
         result = updates.text_value
 
@@ -42,7 +42,7 @@ class TestUpdates:
 
     def test_defaults_required(self, default_config, default_thresholds):
         """Test required updates."""
-        updates = Updates(thresholds_settings=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
         updates.update(available_updates=["siun", "linux", *["package"] * 15])
         result = updates.text_value
 
@@ -54,7 +54,7 @@ class TestUpdates:
         json_content = io.StringIO(
             "{"
             '"last_update": "1970-01-01T01:00:00Z", '
-            '"state": "OK", "thresholds": {}, '
+            '"state": "OK", "thresholds": [], '
             '"matched_criteria": {}, "available_updates": ["siun"], "criteria_settings": {}'
             "}"
         )
@@ -71,7 +71,7 @@ class TestUpdates:
         json_content = io.StringIO(
             "{"
             '"last_update": "1970-01-01T01:00:00Z", '
-            '"state": "OK", "thresholds": {}, '
+            '"state": "OK", "thresholds": [], '
             '"matched_criteria": {}, "available_updates": [], "criteria_settings": {}'
             "}"
         )
@@ -89,7 +89,7 @@ class TestUpdates:
         json_content = io.StringIO(
             "{"
             '"last_update": "1970-01-01T01:00:00Z", '
-            '"state": {"py-type": "State", "value": "OK"}, "thresholds": {}, '
+            '"state": {"py-type": "State", "value": "OK"}, "thresholds": [], '
             '"matched_criteria": {}, "available_updates": [], "criteria_settings": {}'
             "}"
         )
@@ -105,7 +105,7 @@ class TestUpdates:
         state = State.WARNING_UPDATES
         state_file_path = tmp_path / "test.json"
         updates = Updates(
-            thresholds_settings=default_thresholds,
+            thresholds=default_thresholds,
             criteria_settings=default_config.criteria,
             last_update=last_update,
             state=state,

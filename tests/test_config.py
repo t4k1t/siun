@@ -19,6 +19,34 @@ CONFIG_CUSTOM_STATE_FILE_PATH = """
 state_file = "/tmp/siun-test-state.json"
 """
 
+CONFIG_LEGACY_THRESHOLDS = """
+cmd_available = "checkupdates --nocolor"
+thresholds = { available = 1, warning = 2, critical = 3 }
+[criteria]
+count_weight = 1
+"""
+
+CONFIG_V2_THRESHOLDS = """
+cmd_available = "checkupdates --nocolor"
+[[v2_thresholds]]
+name = "critical"
+score = 3
+color = "red"
+
+[[v2_thresholds]]
+name = "warning"
+score = 2
+color = "yellow"
+
+[[v2_thresholds]]
+name = "available"
+score = 1
+color = "green"
+
+[criteria]
+count_weight = 1
+"""
+
 # Override `$HOME` for consistent tests
 environ["HOME"] = "/tmp/siun-tests"  # noqa: S108
 
@@ -66,3 +94,48 @@ class TestConfig:
             config = get_config()
 
         assert config.state_file == Path("/tmp/siun-tests/state/siun/state.json")  # noqa: S108
+
+
+class TestThresholdsConfig:
+    """Test config with legacy and v2 thresholds."""
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_LEGACY_THRESHOLDS))
+    def test_legacy_thresholds(self, mock_read_config):
+        """Test config using legacy 'thresholds' dict."""
+        with mock.patch("siun.config.get_default_config_dir"):
+            config = get_config()
+
+        names = [t.name for t in config.v2_thresholds]
+        scores = [t.score for t in config.v2_thresholds]
+
+        assert set(names) == {"critical", "warning", "available"}
+        assert set(scores) == {1, 2, 3}
+        mock_read_config.assert_called_once()
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_V2_THRESHOLDS))
+    def test_v2_thresholds(self, mock_read_config):
+        """Test config using v2_thresholds list."""
+        with mock.patch("siun.config.get_default_config_dir"):
+            config = get_config()
+
+        names = [t.name for t in config.v2_thresholds]
+        scores = [t.score for t in config.v2_thresholds]
+        colors = [getattr(t, "color", None) for t in config.v2_thresholds]
+
+        assert set(names) == {"critical", "warning", "available"}
+        assert set(scores) == {1, 2, 3}
+        assert set(colors) == {"red", "yellow", "green"}
+        mock_read_config.assert_called_once()
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_LEGACY_THRESHOLDS))
+    def test_thresholds_equivalence(self, mock_read_config):
+        """Test that legacy and v2 thresholds produce equivalent sorted_thresholds."""
+        with mock.patch("siun.config.get_default_config_dir"):
+            config_legacy = get_config()
+        sorted_legacy = [(t.name, t.score) for t in config_legacy.sorted_thresholds]
+
+        with mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_V2_THRESHOLDS)):
+            config_v2 = get_config()
+        sorted_v2 = [(t.name, t.score) for t in config_v2.sorted_thresholds]
+
+        assert sorted_legacy == sorted_v2
