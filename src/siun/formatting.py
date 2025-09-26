@@ -14,7 +14,6 @@ class OutputFormat(Enum):
     PLAIN = "plain"
     FANCY = "fancy"
     JSON = "json"
-    I3STATUS = "i3status"
     CUSTOM = "custom"
 
 
@@ -40,30 +39,6 @@ class Formatter:
             "score": format_object.score,
         }
         return json.dumps(state_dict), {}
-
-    @staticmethod
-    def format_i3status(format_object: FormatObject) -> tuple[str, dict[Never, Never]]:
-        """Build output format for i3status."""
-        i3status_state_map = {
-            "OK": "Idle",
-            "AVAILABLE_UPDATES": "Idle",
-            "WARNING_UPDATES": "Warning",
-            "CRITICAL_UPDATES": "Critical",
-            "UNKNOWN": "Idle",
-        }
-        i3status_text_map = {
-            "OK": "",
-            "AVAILABLE_UPDATES": "",
-            "WARNING_UPDATES": format_object.matched_criteria_short,
-            "CRITICAL_UPDATES": format_object.matched_criteria_short,
-            "UNKNOWN": "…",
-        }
-        i3status_data = {
-            "icon": "archive",
-            "state": i3status_state_map[format_object.state_name],
-            "text": i3status_text_map[format_object.state_name],
-        }
-        return json.dumps(i3status_data), {}
 
     @staticmethod
     def format_custom(format_object: FormatObject, template_string: str) -> tuple[str, dict[Never, Never]]:
