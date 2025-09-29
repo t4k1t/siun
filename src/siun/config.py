@@ -5,12 +5,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as toml_load
-from typing import Any, no_type_check
+from typing import Any, Self, no_type_check
 
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
 from siun.errors import ConfigError
-from siun.models import V2Threshold
+from siun.models import ClickColor, V2Threshold
 from siun.notification import UpdateNotification
 from siun.util import get_default_config_dir, get_default_state_path
 
@@ -18,9 +18,9 @@ from siun.util import get_default_config_dir, get_default_state_path
 def get_default_thresholds() -> list[V2Threshold]:
     """Backwards compatible default thresholds."""
     return [
-        V2Threshold(name="critical", score=3, color="red"),
-        V2Threshold(name="warning", score=2, color="yellow"),
-        V2Threshold(name="available", score=1, color="green"),
+        V2Threshold(name="critical", score=3, color=ClickColor.red, text="Updates required!"),
+        V2Threshold(name="warning", score=2, color=ClickColor.yellow, text="Updates recommended."),
+        V2Threshold(name="available", score=1, color=ClickColor.green, text="Updates available."),
     ]
 
 
@@ -45,6 +45,24 @@ class SiunConfig(BaseModel):
         """
         return sorted(self.v2_thresholds, key=lambda item: item.score, reverse=True)
 
+    @computed_field
+    @property
+    def mapped_thresholds(self) -> dict[str, V2Threshold]:
+        """Map thresholds to threshold name."""
+        return {t.name: t for t in self.v2_thresholds}
+
+    @model_validator(mode="after")
+    def notification_must_reference_threshold(self) -> Self:
+        """Check if notification threshold exists."""
+        value = getattr(self, "notification", None)
+        thresholds: list[str] = [t.name for t in getattr(self, "v2_thresholds", [])]
+
+        if value and value.threshold not in thresholds:
+            message = f"notification.threshold must be one of: {', '.join(thresholds)}"
+            raise ValueError(message)
+
+        return self
+
     @field_validator("v2_thresholds")
     def thresholds_must_have_unique_name(cls, value: list[V2Threshold]) -> list[V2Threshold]:
         """
@@ -54,7 +72,7 @@ class SiunConfig(BaseModel):
         """
         unique_names = {obj.name for obj in value}
         if len(unique_names) != len(value):
-            message = "each thresholds must have a unique name."
+            message = "each threshold must have a unique name."
             raise ValueError(message)
 
         return value
@@ -108,6 +126,16 @@ def _migrate_legacy_config(config_path: Path):
         shutil.copy2(legacy_config_path, config_path)
 
 
+def _format_error_loc(err_loc: tuple[int | str, ...]):
+    if err_loc:
+        return f"'{'.'.join([str(loc) for loc in err_loc])}': "
+    return ""
+
+
+def _format_pydantic_error(error: ValidationError):
+    return "; ".join([f"{_format_error_loc(err['loc'])}{err['msg']}" for err in error.errors()])
+
+
 def get_config(config_path: Path | None = None) -> SiunConfig:
     """Get config from defaults and user supplied values."""
     if config_path is None:
@@ -137,5 +165,10 @@ def get_config(config_path: Path | None = None) -> SiunConfig:
             message = f"provided config file not valid: {error}"
             raise ConfigError(message, config_path) from error
 
-    config = SiunConfig(**config_dict)
+    try:
+        config = SiunConfig(**config_dict)
+    except ValidationError as error:
+        message = f"invalid configuration: {_format_pydantic_error(error)}"
+        raise ConfigError(message, config_path) from error
+
     return config

@@ -10,16 +10,15 @@ from unittest import mock
 import pytest
 from click.testing import CliRunner
 
-from siun.errors import CmdRunError, ConfigError
-from siun.main import _get_available_updates, _get_updates, check
-from siun.state import State, Updates
+from siun.errors import CmdRunError, ConfigError, SiunNotificationError
+from siun.main import _get_available_updates, _get_updates, _handle_notification, check
+from siun.state import Updates
 
 EMPTY_STATE = Updates(
     criteria_settings={},
     thresholds=[],
     available_updates=[],
     matched_criteria={},
-    state=State.OK,
     last_update=datetime.datetime.now(tz=datetime.UTC),
 )
 
@@ -33,9 +32,7 @@ WARNING_STATE = Updates(
     thresholds=[],
     available_updates=[],
     matched_criteria={"available": {"weight": 1}, "count": {"weight": 1}},
-    state=State.WARNING_UPDATES,
     last_update=datetime.datetime.now(tz=datetime.UTC),
-    last_state=State.AVAILABLE_UPDATES,
 )
 
 AVAILABLE_STATE = Updates(
@@ -48,9 +45,7 @@ AVAILABLE_STATE = Updates(
     thresholds=[],
     available_updates=[],
     matched_criteria={"available": {"weight": 1}},
-    state=State.AVAILABLE_UPDATES,
     last_update=datetime.datetime.now(tz=datetime.UTC),
-    last_state=State.WARNING_UPDATES,
 )
 
 CONFIG_CUSTOM_STATE_FILE_PATH = """
@@ -76,7 +71,7 @@ class TestMain:
         mock_persist_state.assert_not_called()
         mock_get_available_updates.assert_called_once()
         assert result.exit_code == 0
-        assert result.output == "Ok\n"
+        assert result.output == "No matches.\n"
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
@@ -95,7 +90,7 @@ class TestMain:
         mock_persist_state.assert_not_called()
         mock_get_available_updates.assert_called_once()
         assert result.exit_code == 0
-        assert result.output == "Ok\n"
+        assert result.output == "No matches.\n"
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
@@ -147,7 +142,7 @@ class TestMain:
         mock_persist_state.assert_not_called()
         mock_get_available_updates.assert_not_called()
         assert result.exit_code == 0
-        assert result.output == "Ok\n"
+        assert result.output == "No matches.\n"
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
@@ -188,7 +183,7 @@ class TestMain:
         mock_persist_state.assert_called_once()
         mock_get_available_updates.assert_called_once()
         assert result.exit_code == 0
-        assert result.output == "Updates available\n"
+        assert result.output == "Updates available.\n"
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
@@ -225,12 +220,12 @@ class TestMain:
         mock_get_available_updates,
         mock_read_state,
         mock_persist_state,
-        default_config,
+        v2_config_w_custom_format,
         state_stale,
     ):
         """Test check CLI command with custom output format."""
         mock_read_state.return_value = state_stale
-        mock_get_config.return_value = default_config
+        mock_get_config.return_value = v2_config_w_custom_format
         runner = CliRunner()
         result = runner.invoke(check, ["-o", "custom"])
         mock_read_state.assert_called_once()
@@ -259,7 +254,7 @@ class TestMain:
         mock_persist_state.assert_called_once_with(Path("/tmp/siun-test-state.json"))  # noqa: S108
         mock_get_available_updates.assert_called_once()
         assert result.exit_code == 0
-        assert result.output == "Updates available\n"
+        assert result.output == "Updates available.\n"
 
     def test__get_available_updates(self, fp):
         """Test _get_available_updates with cmd being successful."""
@@ -389,7 +384,7 @@ class TestMain:
         result = runner.invoke(check)
         mock_show.assert_not_called()
         assert result.exit_code == 0
-        assert result.output == "Updates available\n"
+        assert result.output == "Updates available.\n"
 
     @pytest.mark.feature_notification
     @mock.patch("siun.main.Updates.persist_state")
@@ -417,3 +412,66 @@ class TestMain:
         mock_show.assert_called_once()
         assert result.exit_code == 0
         assert result.output == "Updates recommended\n"
+
+    @mock.patch("siun.main.INSTALLED_FEATURES", set())
+    def test__handle_notification_missing_feature(self, notification_mock):
+        """Test _handle_notification raises SiunNotificationError if feature missing."""
+        notification = notification_mock("warning")
+        config = mock.Mock()
+        config.notification = notification
+        config.mapped_thresholds = {"warning": mock.Mock(score=10)}
+        state = mock.Mock()
+        state.match = mock.Mock(score=15)
+        state.last_match = None
+        state.format_object = {}
+
+        with pytest.raises(SiunNotificationError) as excinfo:
+            _handle_notification(config, state)
+        assert "notifications require the 'notification' feature" in str(excinfo.value)
+
+    @mock.patch("siun.main.INSTALLED_FEATURES", {"notification"})
+    def test__handle_notification_threshold_logic(self, notification_mock):
+        """Test _handle_notification does not show notification if match.score <= threshold_score."""
+        notification = notification_mock("warning")
+        config = mock.Mock()
+        config.notification = notification
+        config.mapped_thresholds = {"warning": mock.Mock(score=10)}
+        state = mock.Mock()
+        state.match = mock.Mock(score=8)
+        state.last_match = None
+        state.format_object = {}
+
+        _handle_notification(config, state)
+        notification.show.assert_not_called()
+
+    @mock.patch("siun.main.Updates.persist_state")
+    @mock.patch("siun.main.load_state")
+    @mock.patch("siun.main._update_state", return_value=None)
+    def test_existing_state_sets_required_fields(
+        self, mock_update_state, mock_load_state, mock_persist_state, v2_config_w_custom_format
+    ):
+        """Test loaded state receives required values from config."""
+        loaded_state = Updates(
+            criteria_settings={},
+            thresholds=[],
+            available_updates=["package"],
+            matched_criteria={},
+            last_update=datetime.datetime.now(tz=datetime.UTC),
+        )
+        mock_load_state.return_value = loaded_state
+
+        config_criteria = {"available_weight": 1, "critical_weight": 2}
+
+        result = _get_updates(
+            no_cache=False,
+            no_update=True,
+            cmd_available="dummy",
+            criteria=config_criteria,
+            thresholds=v2_config_w_custom_format.v2_thresholds,
+            cache_min_age_minutes=10,
+            state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+        )
+
+        assert result.criteria_settings == config_criteria
+        assert result.thresholds == v2_config_w_custom_format.v2_thresholds
+        assert result.available_updates == ["package"]

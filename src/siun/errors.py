@@ -48,5 +48,14 @@ class SiunGetUpdatesError(Exception):
         self.message = message
 
 
+@final
+class SiunNotificationError(Exception):
+    """Wrap Exception for errors related to notifications."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
 class SiunCLIError(ClickException):
     """Wrap ClickException for explicit abort on error."""

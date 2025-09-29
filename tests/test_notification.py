@@ -15,7 +15,7 @@ class TestNotification:
     @mock.patch("siun.notification.UpdateNotification.show")
     def test_defaults_ok(self, mocked_show):
         """Test defaults are enough."""
-        notification = UpdateNotification()
+        notification = UpdateNotification(threshold="available")
         notification.show()
 
         assert notification.app_name == "siun"
@@ -33,7 +33,7 @@ class TestNotification:
     )
     def test_urgency_validation_ok(self, urgency, expected_value):
         """Test valid urgency values."""
-        notification = UpdateNotification(urgency=urgency)
+        notification = UpdateNotification(urgency=urgency, threshold="critical")
 
         assert notification.app_name == "siun"
         assert notification.urgency == expected_value
@@ -66,7 +66,9 @@ class TestNotification:
             state_color="green",
             state_name="AVAILABLE_UPDATES",
         )
-        notification = UpdateNotification(title="$status_text: $available_updates", message=template_string_all)
+        notification = UpdateNotification(
+            title="$status_text: $available_updates", message=template_string_all, threshold="available"
+        )
 
         notification.fill_templates(format_obj)
 

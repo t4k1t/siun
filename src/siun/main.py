@@ -10,19 +10,20 @@ from typing import Any
 import click
 
 from siun import __version__
-from siun.config import get_config
+from siun.config import SiunConfig, get_config
 from siun.errors import (
     CmdRunError,
     ConfigError,
     CriterionError,
     SiunCLIError,
     SiunGetUpdatesError,
+    SiunNotificationError,
     SiunStateUpdateError,
 )
 from siun.formatting import Formatter, OutputFormat
 from siun.models import V2Threshold
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
-from siun.state import State, Updates, load_state
+from siun.state import Updates, load_state
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
@@ -83,7 +84,9 @@ def _get_updates(
     existing_state = load_state(state_file_path)
     if existing_state:
         siun_state = existing_state
-        siun_state.last_state = siun_state.state
+        siun_state.last_match = siun_state.match
+        siun_state.thresholds = thresholds  # Update thresholds from config
+        siun_state.criteria_settings = criteria  # Update criteria from config
     if no_update:
         return siun_state
 
@@ -101,6 +104,29 @@ def _get_updates(
             raise SiunGetUpdatesError(message) from error
 
     return siun_state
+
+
+def _handle_notification(config: SiunConfig, siun_state: Updates) -> None:
+    notification = config.notification
+    if not notification:
+        return None
+
+    if "notification" not in INSTALLED_FEATURES:
+        message = "notifications require the 'notification' feature, install with 'pip install siun[notification]'"
+        raise SiunNotificationError(message)
+
+    threshold_score = config.mapped_thresholds[notification.threshold].score
+    if (
+        not siun_state.match
+        or (siun_state.last_match and siun_state.match.score <= siun_state.last_match.score)
+        or siun_state.match.score <= threshold_score
+    ):
+        return None
+
+    notification.fill_templates(siun_state.format_object)
+    if notification.urgency is not None:
+        notification.hints = {"urgency": notification.urgency.value}
+    notification.show()
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
@@ -134,12 +160,11 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool, conf
         message = f"{error.message}; config path: {error.config_path}"
         raise SiunCLIError(message) from error
 
-    cmd_available = config.cmd_available
     try:
         siun_state = _get_updates(
             no_cache=not cache,
             no_update=no_update,
-            cmd_available=cmd_available,
+            cmd_available=config.cmd_available,
             criteria=config.criteria,
             thresholds=config.sorted_thresholds,
             cache_min_age_minutes=config.cache_min_age_minutes,
@@ -156,20 +181,10 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool, conf
     if not quiet:
         click.secho(output, **output_kwargs)
 
-    notification = config.notification
-    if notification:
-        if "notification" not in INSTALLED_FEATURES:
-            message = "notifications require the 'notification' feature, install with 'pip install siun[notification]'"
-            raise SiunCLIError(message)
-
-        threshold_state = State(f"{notification.threshold.value.upper()}_UPDATES")
-        if siun_state.state <= siun_state.last_state or siun_state.state < threshold_state:
-            return
-
-        notification.fill_templates(siun_state.format_object)
-        if notification.urgency is not None:
-            notification.hints = {"urgency": notification.urgency.value}
-        notification.show()
+    try:
+        _handle_notification(config, siun_state)
+    except SiunNotificationError as error:
+        raise SiunCLIError(error.message) from error
 
 
 if __name__ == "__main__":  # pragma: no cover

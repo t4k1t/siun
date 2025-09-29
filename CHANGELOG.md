@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Added `v2_thresholds` setting for more flexible threshold configuration.
+
+### Changed
+
+- Reduced amount of data stored in the state file (Yay for smaller file size).
+- Criteria and threshold settings will now be considered on every run, even when the cache can be used.
+- Some internals have been refactored. The result is more flexible, but also more readable code.
+- Updated dependencies.
+
+### Removed
+
+- Removed the `i3status` output format - similar results can be achieved with the `custom` output format.
+
 ## [1.5.1] - 2025-09-20
 
 ### Changed
