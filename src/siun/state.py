@@ -126,7 +126,7 @@ class Updates(BaseModel):
             state_name=self.text_value,
         )
 
-    def update(self, available_updates: list[str] | None = None) -> None:
+    def evaluate(self, available_updates: list[str] | None = None) -> None:
         """Update state of updates."""
         self.touch()
         if available_updates is None:

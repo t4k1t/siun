@@ -18,7 +18,7 @@ class TestUpdates:
     def test_defaults_ok(self, default_config, default_thresholds):
         """Test no available updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
-        updates.update(available_updates=[])
+        updates.evaluate(available_updates=[])
         result = updates.text_value
 
         assert result == "No matches."
@@ -26,7 +26,7 @@ class TestUpdates:
     def test_defaults_available(self, default_config, default_thresholds):
         """Test available updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
-        updates.update(available_updates=["siun"])
+        updates.evaluate(available_updates=["siun"])
         result = updates.text_value
 
         assert result == "Updates available."
@@ -34,7 +34,7 @@ class TestUpdates:
     def test_defaults_recommended(self, default_config, default_thresholds):
         """Test recommended updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
-        updates.update(available_updates=["siun", "linux"])
+        updates.evaluate(available_updates=["siun", "linux"])
         result = updates.text_value
 
         assert result == "Updates recommended."
@@ -42,7 +42,7 @@ class TestUpdates:
     def test_defaults_required(self, default_config, default_thresholds):
         """Test required updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
-        updates.update(available_updates=["siun", "linux", *["package"] * 15])
+        updates.evaluate(available_updates=["siun", "linux", *["package"] * 15])
         result = updates.text_value
 
         assert result == "Updates required!"
@@ -118,7 +118,7 @@ class TestUpdates:
 
         monkeypatch.setattr("siun.state._load_user_criteria", fail_loader)
         with pytest.raises(CriterionError) as excinfo:
-            updates.update(available_updates=["siun"])
+            updates.evaluate(available_updates=["siun"])
 
         assert "unable to load user criteria" in str(excinfo.value)
 

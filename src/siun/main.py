@@ -23,13 +23,24 @@ from siun.errors import (
 from siun.formatting import Formatter, OutputFormat
 from siun.models import V2Threshold
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
-from siun.state import Updates, load_state
+from siun.state import FormatObject, Updates, load_state
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
 
 
-def _get_available_updates(cmd: str) -> list[str] | None:
+def get_formatted_state_text(format_object: FormatObject, output_format: str, custom_format: str) -> str:
+    """Generate formatted output text from update state."""
+    formatter = Formatter()
+    formatter_kwargs = {}
+    if output_format == OutputFormat.CUSTOM.value:
+        formatter_kwargs["template_string"] = custom_format
+    formatted_output, format_options = getattr(formatter, f"format_{output_format}")(format_object, **formatter_kwargs)
+    return click.style(formatted_output, **format_options)
+
+
+def fetch_available_updates(cmd: str) -> list[str] | None:
+    """Run external command to get list of available updates."""
     try:
         available_updates_run = subprocess.run(  # noqa: S602
             cmd,
@@ -46,9 +57,10 @@ def _get_available_updates(cmd: str) -> list[str] | None:
         raise CmdRunError(error) from error
 
 
-def _update_state(siun_state: Updates, cmd_available: str) -> None:
+def update_state_with_available_packages(siun_state: Updates, cmd_available: str) -> None:
+    """Fetch available package updates an (re-)evaluate update state."""
     try:
-        siun_state.update(available_updates=_get_available_updates(cmd=cmd_available))
+        siun_state.evaluate(available_updates=fetch_available_updates(cmd_available))
     except CmdRunError as error:
         message = f"failed to query available updates: {error}"
         raise SiunStateUpdateError(message) from error
@@ -57,6 +69,8 @@ def _update_state(siun_state: Updates, cmd_available: str) -> None:
         raise SiunStateUpdateError(message) from error
 
 
+# TODO: Update CHANGELOG, examples
+# TODO: Refactor: split
 def _get_updates(
     *,
     no_cache: bool,
@@ -74,7 +88,7 @@ def _get_updates(
             return siun_state
 
         try:
-            _update_state(siun_state, cmd_available)
+            update_state_with_available_packages(siun_state, cmd_available)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         return siun_state
@@ -82,19 +96,24 @@ def _get_updates(
     now = datetime.datetime.now(tz=datetime.UTC)
     cache_min_age = datetime.timedelta(minutes=cache_min_age_minutes)
     existing_state = load_state(state_file_path)
+    is_stale = existing_state and existing_state.last_update < (now - cache_min_age)
+
     if existing_state:
         siun_state = existing_state
         siun_state.last_match = siun_state.match
         siun_state.thresholds = thresholds  # Update thresholds from config
         siun_state.criteria_settings = criteria  # Update criteria from config
+        try:
+            siun_state.evaluate(available_updates=existing_state.available_updates)
+        except SiunStateUpdateError as error:
+            raise SiunGetUpdatesError(error.message) from error
+
     if no_update:
         return siun_state
 
-    is_stale = existing_state and existing_state.last_update < (now - cache_min_age)
-
     if not existing_state or (existing_state and is_stale):
         try:
-            _update_state(siun_state, cmd_available)
+            update_state_with_available_packages(siun_state, cmd_available)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         try:
@@ -173,13 +192,9 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool, conf
     except SiunGetUpdatesError as error:
         raise SiunCLIError(error.message) from error
 
-    formatter = Formatter()
-    formatter_kwargs = {}
-    if output_format == OutputFormat.CUSTOM.value:
-        formatter_kwargs["template_string"] = config.custom_format
-    output, output_kwargs = getattr(formatter, f"format_{output_format}")(siun_state.format_object, **formatter_kwargs)
     if not quiet:
-        click.secho(output, **output_kwargs)
+        formatted_output = get_formatted_state_text(siun_state.format_object, output_format, config.custom_format)
+        click.echo(formatted_output)
 
     try:
         _handle_notification(config, siun_state)
