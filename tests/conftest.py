@@ -56,7 +56,7 @@ def config_w_notification(default_thresholds):
         },
         custom_format="$status_text: $available_updates",
         state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
-        notification={"title": "siun test notification", "threshold": "warning"},
+        notification={"title": "siun test notification", "threshold": "available"},
     )
 
 
@@ -71,7 +71,7 @@ def config_w_notification_threshold(default_thresholds):
             "available_weight": 1,
             "critical_pattern": "^archlinux-keyring$|^linux$|^pacman.*$",
             "critical_weight": 1,
-            "count_threshold": 15,
+            "count_threshold": 2,
             "count_weight": 1,
             "lastupdate_age_hours": 618,  # 7 days
             "lastupdate_weight": 1,
@@ -116,7 +116,6 @@ def state_stale(default_thresholds):
         },
         thresholds_settings=default_thresholds,
         available_updates=[],
-        matched_criteria={"available": {"weight": 1}},
         last_update=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=1),
     )
 

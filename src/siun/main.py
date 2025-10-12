@@ -102,7 +102,7 @@ def _handle_notification(config: SiunConfig, siun_state: Updates) -> None:
     if (
         not siun_state.match
         or (siun_state.last_match and siun_state.match.score <= siun_state.last_match.score)
-        or siun_state.match.score <= threshold_score
+        or siun_state.match.score < threshold_score
     ):
         return None
 
