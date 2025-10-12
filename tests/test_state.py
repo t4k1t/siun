@@ -1,14 +1,15 @@
 """Test state module."""
 
 import io
+import subprocess
 from os import environ
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-from siun.errors import CriterionError
-from siun.state import FormatObject, Updates, _load_user_criteria, load_state
+from siun.errors import CmdRunError, CriterionError
+from siun.state import FormatObject, Updates, _load_user_criteria, fetch_available_updates, load_state
 from siun.util import get_default_criteria_dir
 
 
@@ -29,7 +30,7 @@ class TestUpdates:
         updates.evaluate(available_updates=["siun"])
         result = updates.text_value
 
-        assert result == "Updates available."
+        assert result == "Updates available"
 
     def test_defaults_recommended(self, default_config, default_thresholds):
         """Test recommended updates."""
@@ -37,7 +38,7 @@ class TestUpdates:
         updates.evaluate(available_updates=["siun", "linux"])
         result = updates.text_value
 
-        assert result == "Updates recommended."
+        assert result == "Updates recommended"
 
     def test_defaults_required(self, default_config, default_thresholds):
         """Test required updates."""
@@ -45,7 +46,7 @@ class TestUpdates:
         updates.evaluate(available_updates=["siun", "linux", *["package"] * 15])
         result = updates.text_value
 
-        assert result == "Updates required!"
+        assert result == "Updates required"
 
     @mock.patch("siun.state.Path.open")
     def test_read_state(self, mock_open):
@@ -172,11 +173,41 @@ class TestCustomCriteria:
         assert "test_criterion" not in user_criteria
 
     def test__default_criteria_dir(self):
+        """Test get_default_criteria_dir with XDG_CONFIG_HOME set."""
         with mock.patch.dict(environ, clear=True):
             environ["XDG_CONFIG_HOME"] = "/tmp/siun-tests/config"  # noqa: S108
             assert get_default_criteria_dir() == Path("/tmp/siun-tests/config/siun/criteria")  # noqa: S108
 
     def test__default_criteria_dir_wo_config_home(self):
+        """Test get_default_criteria_dir without XDG_CONFIG_HOME set."""
         with mock.patch.dict(environ, clear=True):
             environ["HOME"] = "/tmp/siun-tests/no_config_home"  # noqa: S108
             assert get_default_criteria_dir() == Path("/tmp/siun-tests/no_config_home/.config/siun/criteria")  # noqa: S108
+
+
+class TestState:
+    """Test other state module functions."""
+
+    def test_fetch_available_updates(self, fp):
+        """Test fetch_available_updates with cmd being successful."""
+        fp.register([":"], stdout="foo\nbar")
+
+        available_updates = fetch_available_updates(":")
+        assert available_updates == ["foo", "bar"]
+
+    def test_fetch_available_updates_cmd_fails(self, fp):
+        """Test fetch_available_updates with cmd failing."""
+        fp.register([":"], stdout="foo\nbar")
+
+        with (
+            pytest.raises(CmdRunError),
+            mock.patch("siun.state.subprocess.run", side_effect=subprocess.CalledProcessError(1, ":")),
+        ):
+            fetch_available_updates(":")
+
+    def test_fetch_available_updates_cmd_not_found(self, fp):
+        """Test fetch_available_updates with cmd being not found."""
+        fp.register([":"])
+
+        with pytest.raises(CmdRunError), mock.patch("siun.state.subprocess.run", side_effect=FileNotFoundError()):
+            fetch_available_updates(":")

@@ -1,7 +1,6 @@
 """Test main function and CLI."""
 
 import datetime
-import subprocess
 import tempfile
 import tomllib
 from pathlib import Path
@@ -11,7 +10,7 @@ import pytest
 from click.testing import CliRunner
 
 from siun.errors import CmdRunError, ConfigError, SiunNotificationError
-from siun.main import _get_updates, _handle_notification, check, fetch_available_updates
+from siun.main import _get_updates, _handle_notification, check
 from siun.state import Updates
 
 EMPTY_STATE = Updates(
@@ -58,7 +57,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=[])
+    @mock.patch("siun.state.fetch_available_updates", return_value=[])
     @mock.patch("siun.main.get_config")
     def test_check_no_available_updates_no_cache(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -75,7 +74,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=[])
+    @mock.patch("siun.state.fetch_available_updates", return_value=[])
     @mock.patch("siun.main.get_config")
     def test_check_with_config_path_option(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -94,7 +93,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=[])
+    @mock.patch("siun.state.fetch_available_updates", return_value=[])
     @mock.patch("siun.main.get_config")
     def test_check_no_cache_no_update_options(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -111,7 +110,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=[])
+    @mock.patch("siun.state.fetch_available_updates", return_value=[])
     @mock.patch("siun.main.get_config")
     def test_check_quiet_option(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -128,7 +127,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=[])
+    @mock.patch("siun.state.fetch_available_updates", return_value=[])
     @mock.patch("siun.main.get_config")
     def test_check_no_updates(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -146,7 +145,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates")
+    @mock.patch("siun.state.fetch_available_updates")
     @mock.patch("siun.main.get_config", side_effect=ConfigError("failed", config_path=Path("/path/to/siun.toml")))
     def test_check_invalid_config(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -163,7 +162,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=["package"])
+    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
     @mock.patch("siun.main.get_config")
     def test_check_stale_state(
         self,
@@ -183,11 +182,11 @@ class TestMain:
         mock_persist_state.assert_called_once()
         mockfetch_available_updates.assert_called_once()
         assert result.exit_code == 0
-        assert result.output == "Updates available.\n"
+        assert result.output == "Updates available\n"
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates", side_effect=CmdRunError("Fuuu"))
+    @mock.patch("siun.state.fetch_available_updates", side_effect=CmdRunError("Fuuu"))
     @mock.patch("siun.main.get_config")
     def test_check_with_error_onfetch_available_updates(
         self,
@@ -212,7 +211,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=["package"])
+    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
     @mock.patch("siun.main.get_config")
     def test_check_with_custom_output_format(
         self,
@@ -228,7 +227,6 @@ class TestMain:
         mock_get_config.return_value = v2_config_w_custom_format
         runner = CliRunner()
         result = runner.invoke(check, ["-o", "custom"])
-        print(result.output)
         mock_read_state.assert_called_once()
         mock_persist_state.assert_called_once()
         mockfetch_available_updates.assert_called_once()
@@ -237,7 +235,7 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state", return_value=False)
-    @mock.patch("siun.main.fetch_available_updates", return_value=["package"])
+    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
     def test_custom_state_file_path_config(
         self, mock_read_config, mockfetch_available_updates, mock_read_state, mock_persist_state
@@ -255,31 +253,7 @@ class TestMain:
         mock_persist_state.assert_called_once_with(Path("/tmp/siun-test-state.json"))  # noqa: S108
         mockfetch_available_updates.assert_called_once()
         assert result.exit_code == 0
-        assert result.output == "Updates available.\n"
-
-    def test_fetch_available_updates(self, fp):
-        """Test fetch_available_updates with cmd being successful."""
-        fp.register([":"], stdout="foo\nbar")
-
-        available_updates = fetch_available_updates(":")
-        assert available_updates == ["foo", "bar"]
-
-    def test_fetch_available_updates_cmd_fails(self, fp):
-        """Test fetch_available_updates with cmd failing."""
-        fp.register([":"], stdout="foo\nbar")
-
-        with (
-            pytest.raises(CmdRunError),
-            mock.patch("siun.main.subprocess.run", side_effect=subprocess.CalledProcessError(1, ":")),
-        ):
-            fetch_available_updates(":")
-
-    def test_fetch_available_updates_cmd_not_found(self, fp):
-        """Test fetch_available_updates with cmd being not found."""
-        fp.register([":"])
-
-        with pytest.raises(CmdRunError), mock.patch("siun.main.subprocess.run", side_effect=FileNotFoundError()):
-            fetch_available_updates(":")
+        assert result.output == "Updates available\n"
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state", return_value=False)
@@ -338,10 +312,10 @@ class TestMain:
         assert result.available_updates == ["siun"]
 
     @mock.patch("siun.main.INSTALLED_FEATURES", [])
-    @mock.patch("siun.main.fetch_available_updates", return_value=["package"])
+    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
     @mock.patch("siun.main.get_config")
     def test_check_notification_wo_feature(self, mock_get_config, mockfetch_available_updates, config_w_notification):
-        """Test check CLI command with notification."""
+        """Test check CLI command with missing notification feature."""
         mock_get_config.return_value = config_w_notification
         runner = CliRunner()
         result = runner.invoke(check, ["-n"])
@@ -351,7 +325,7 @@ class TestMain:
 
     @pytest.mark.feature_notification
     @mock.patch("siun.notification.UpdateNotification.show")
-    @mock.patch("siun.main.fetch_available_updates", return_value=["package"])
+    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
     @mock.patch("siun.main.get_config")
     def test_check_notification(self, mock_get_config, mockfetch_available_updates, mock_show, config_w_notification):
         """Test check CLI command with notification."""
@@ -364,7 +338,7 @@ class TestMain:
         assert result.output == "Updates available\n"
 
     @mock.patch("siun.main.Updates.persist_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=["package"])
+    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
     @mock.patch("siun.main.load_state")
     @mock.patch("siun.notification.UpdateNotification.show")
     @mock.patch("siun.main.get_config")
@@ -386,11 +360,11 @@ class TestMain:
         result = runner.invoke(check)
         mock_show.assert_not_called()
         assert result.exit_code == 0
-        assert result.output == "Updates available.\n"
+        assert result.output == "Updates available\n"
 
     @pytest.mark.feature_notification
     @mock.patch("siun.main.Updates.persist_state")
-    @mock.patch("siun.main.fetch_available_updates", return_value=["package", "other_package"])
+    @mock.patch("siun.state.fetch_available_updates", return_value=["package", "other_package"])
     @mock.patch("siun.main.load_state")
     @mock.patch("siun.notification.UpdateNotification.show")
     @mock.patch("siun.main.get_config")

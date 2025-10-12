@@ -18,9 +18,9 @@ from siun.util import get_default_config_dir, get_default_state_path
 def get_default_thresholds() -> list[V2Threshold]:
     """Backwards compatible default thresholds."""
     return [
-        V2Threshold(name="critical", score=3, color=ClickColor.red, text="Updates required!"),
-        V2Threshold(name="warning", score=2, color=ClickColor.yellow, text="Updates recommended."),
-        V2Threshold(name="available", score=1, color=ClickColor.green, text="Updates available."),
+        V2Threshold(name="critical", score=3, color=ClickColor.red, text="Updates required"),
+        V2Threshold(name="warning", score=2, color=ClickColor.yellow, text="Updates recommended"),
+        V2Threshold(name="available", score=1, color=ClickColor.green, text="Updates available"),
     ]
 
 

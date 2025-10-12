@@ -8,7 +8,7 @@ import pytest
 
 from siun.config import SiunConfig, get_default_thresholds
 from siun.models import V2Threshold
-from siun.state import Updates
+from siun.state import FormatObject, Updates
 
 
 @pytest.fixture(scope="module")
@@ -105,6 +105,7 @@ def v2_config_w_custom_format(default_thresholds):
 
 @pytest.fixture
 def state_stale(default_thresholds):
+    """Expired Update state."""
     return Updates(
         criteria_settings={
             "available_weight": 1,
@@ -132,5 +133,91 @@ def notification_mock():
         notification.fill_templates = mock.Mock()
         notification.show = mock.Mock()
         return notification
+
+    return _make
+
+
+@pytest.fixture(scope="module")
+def format_object_ok():
+    """FormatObject with 'Ok' status."""
+    return FormatObject(
+        available_updates="",
+        last_update="2025-01-01T00:00:00+00:00",
+        matched_criteria="",
+        matched_criteria_short="",
+        score=0,
+        status_text="Ok",
+        update_count=0,
+        state_color="green",
+        state_name="Ok",
+    )
+
+
+@pytest.fixture(scope="module")
+def format_object_available():
+    """FormatObject with 'Updates available' status."""
+    return FormatObject(
+        available_updates="",
+        last_update="2025-01-01T00:00:00+00:00",
+        matched_criteria="",
+        matched_criteria_short="",
+        score=0,
+        status_text="Updates available",
+        update_count=0,
+        state_color="blue",
+        state_name="Updates available",
+    )
+
+
+@pytest.fixture(scope="module")
+def format_object_recommended():
+    """FormatObject with 'Updates recommended' status."""
+    return FormatObject(
+        available_updates="",
+        last_update="2025-01-01T00:00:00+00:00",
+        matched_criteria="",
+        matched_criteria_short="",
+        score=0,
+        status_text="Updates recommended",
+        update_count=0,
+        state_color="yellow",
+        state_name="Updates recommended",
+    )
+
+
+@pytest.fixture(scope="module")
+def format_object_required():
+    """FormatObject with 'Updates required' status."""
+    return FormatObject(
+        available_updates="",
+        last_update="2025-01-01T00:00:00+00:00",
+        matched_criteria="",
+        matched_criteria_short="",
+        score=0,
+        status_text="Updates required",
+        update_count=0,
+        state_color="red",
+        state_name="Updates required",
+    )
+
+
+@pytest.fixture
+def format_object_factory():
+    """Build factory for FormatObject instances with custom attributes."""
+
+    def _make(**kwargs):
+        defaults = {
+            "available_updates": "",
+            "last_update": "2025-01-01T00:00:00+00:00",
+            "matched_criteria": "",
+            "matched_criteria_short": "",
+            "score": 0,
+            "status_text": "Ok",
+            "update_count": 0,
+            "state_color": "green",
+            "state_name": "Ok",
+        }
+        defaults.update(kwargs)
+        return FormatObject(**defaults)
 
     return _make

@@ -3,7 +3,6 @@
 """siun - Know how urgently your system needs to be updated."""
 
 import datetime
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -12,9 +11,7 @@ import click
 from siun import __version__
 from siun.config import SiunConfig, get_config
 from siun.errors import (
-    CmdRunError,
     ConfigError,
-    CriterionError,
     SiunCLIError,
     SiunGetUpdatesError,
     SiunNotificationError,
@@ -23,7 +20,7 @@ from siun.errors import (
 from siun.formatting import Formatter, OutputFormat
 from siun.models import V2Threshold
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
-from siun.state import FormatObject, Updates, load_state
+from siun.state import FormatObject, Updates, load_state, update_state_with_available_packages
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
@@ -39,38 +36,6 @@ def get_formatted_state_text(format_object: FormatObject, output_format: str, cu
     return click.style(formatted_output, **format_options)
 
 
-def fetch_available_updates(cmd: str) -> list[str] | None:
-    """Run external command to get list of available updates."""
-    try:
-        available_updates_run = subprocess.run(  # noqa: S602
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=True,
-        )
-        return available_updates_run.stdout.splitlines()
-
-    except subprocess.CalledProcessError as error:
-        raise CmdRunError(error.stderr) from error
-    except FileNotFoundError as error:
-        raise CmdRunError(error) from error
-
-
-def update_state_with_available_packages(siun_state: Updates, cmd_available: str) -> None:
-    """Fetch available package updates an (re-)evaluate update state."""
-    try:
-        siun_state.evaluate(available_updates=fetch_available_updates(cmd_available))
-    except CmdRunError as error:
-        message = f"failed to query available updates: {error}"
-        raise SiunStateUpdateError(message) from error
-    except CriterionError as error:
-        message = f"failed to check criterion [{error.criterion_name}]: {error.message}"
-        raise SiunStateUpdateError(message) from error
-
-
-# TODO: Update CHANGELOG, examples
-# TODO: Refactor: split
 def _get_updates(
     *,
     no_cache: bool,
@@ -82,11 +47,10 @@ def _get_updates(
     state_file_path: Path,
 ) -> Updates:
     siun_state = Updates(criteria_settings=criteria, thresholds=thresholds)
+
     if no_cache:
         if no_update:
-            # NOTE: The CLI forbids the combination of no_cache and no_update, but there is not reason to fail here
             return siun_state
-
         try:
             update_state_with_available_packages(siun_state, cmd_available)
         except SiunStateUpdateError as error:
@@ -101,8 +65,8 @@ def _get_updates(
     if existing_state:
         siun_state = existing_state
         siun_state.last_match = siun_state.match
-        siun_state.thresholds = thresholds  # Update thresholds from config
-        siun_state.criteria_settings = criteria  # Update criteria from config
+        siun_state.thresholds = thresholds
+        siun_state.criteria_settings = criteria
         try:
             siun_state.evaluate(available_updates=existing_state.available_updates)
         except SiunStateUpdateError as error:
@@ -111,7 +75,7 @@ def _get_updates(
     if no_update:
         return siun_state
 
-    if not existing_state or (existing_state and is_stale):
+    if not existing_state or is_stale:
         try:
             update_state_with_available_packages(siun_state, cmd_available)
         except SiunStateUpdateError as error:

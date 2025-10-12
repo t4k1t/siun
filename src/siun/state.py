@@ -3,6 +3,7 @@
 import datetime
 import importlib.util
 import shutil
+import subprocess
 import tempfile
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
@@ -11,7 +12,11 @@ from typing import Any
 from pydantic import BaseModel, Field, ValidationError
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, SiunCriterion
-from siun.errors import CriterionError
+from siun.errors import (
+    CmdRunError,
+    CriterionError,
+    SiunStateUpdateError,
+)
 from siun.models import ClickColor, V2Threshold
 from siun.util import get_default_criteria_dir
 
@@ -204,3 +209,33 @@ def load_state(state_file_path: Path) -> Updates | None:
             else:
                 # Raise normally if anything else is wrong with the state file
                 raise error
+
+
+def fetch_available_updates(cmd: str) -> list[str] | None:
+    """Run external command to get list of available updates."""
+    try:
+        available_updates_run = subprocess.run(  # noqa: S602
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            shell=True,
+        )
+        return available_updates_run.stdout.splitlines()
+
+    except subprocess.CalledProcessError as error:
+        raise CmdRunError(error.stderr) from error
+    except FileNotFoundError as error:
+        raise CmdRunError(error) from error
+
+
+def update_state_with_available_packages(siun_state: Updates, cmd_available: str) -> None:
+    """Fetch available package updates an (re-)evaluate update state."""
+    try:
+        siun_state.evaluate(available_updates=fetch_available_updates(cmd_available))
+    except CmdRunError as error:
+        message = f"failed to query available updates: {error}"
+        raise SiunStateUpdateError(message) from error
+    except CriterionError as error:
+        message = f"failed to check criterion [{error.criterion_name}]: {error.message}"
+        raise SiunStateUpdateError(message) from error

@@ -1,8 +1,6 @@
 # General settings
 # Command which returns list of available updates
 cmd_available = "pacman -Quq; if [ $? == 1 ]; then :; fi" # pacman returns exit code 1 if there are no updates
-# Weight required to consider updates to be of `available`, `warning`, or `critical` level
-thresholds = { available = 1, warning = 2, critical = 3 }
 # Minimum age of cached update state before it will be refreshed
 cache_min_age_minutes = 30
 # Custom output format - use with `--output-format=custom`
@@ -17,6 +15,28 @@ cache_min_age_minutes = 30
 custom_format = "$status_text: $available_updates"
 # State file location
 state_file = "$XDG_STATE_HOME/siun/state.json"
+
+[[v2_thresholds]]
+# Unique name
+name = "critical"
+# Minimum sum of criteria weights to consider this threshold exceeded
+score = 3
+# Color for `fancy` output format; optional
+color = "red"
+# Custom text for output
+text = "Updates required"
+
+[[v2_thresholds]]
+name = "warning"
+score = 2
+color = "yellow"
+text = "Updates recommended"
+
+[[v2_thresholds]]
+name = "available"
+score = 1
+color = "green"
+text = "Updates available"
 
 # Settings for check criteria - these will determine the urgency of your package updates
 [criteria]

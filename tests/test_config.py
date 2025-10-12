@@ -86,7 +86,7 @@ def mock_read_config(_):
 
 
 class TestConfig:
-    """Test Updates class."""
+    """Test Config class."""
 
     @mock.patch("siun.config._read_config", mock_read_config)
     def test_default_config(self, default_config):
