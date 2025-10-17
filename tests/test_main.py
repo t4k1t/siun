@@ -451,3 +451,76 @@ class TestMain:
         assert result.criteria_settings == config_criteria
         assert result.thresholds == v2_config_w_custom_format.v2_thresholds
         assert result.available_updates == ["package"]
+
+    @mock.patch("siun.main.Updates.persist_state")
+    @mock.patch("siun.main.load_state")
+    @mock.patch("siun.main.update_state_with_available_packages", return_value=None)
+    def test__get_updates_persist_state_on_match_change(
+        self, mock_update_state, mock_load_state, mock_persist_state, default_thresholds
+    ):
+        """Test persist_state called when last_match != match."""
+        threshold1 = default_thresholds[0]
+        threshold2 = default_thresholds[-1]
+
+        def evaluate_side_effect(self, available_updates):
+            self.match = threshold2  # new match
+
+        with mock.patch("siun.state.Updates.evaluate", evaluate_side_effect):
+            state = Updates(
+                criteria_settings={},
+                thresholds=[threshold1, threshold2],
+                available_updates=[],
+                matched_criteria={},
+                last_update=datetime.datetime.now(tz=datetime.UTC),
+                match=threshold1,
+                last_match=threshold2,
+            )
+            mock_load_state.return_value = state
+
+            _get_updates(
+                no_cache=False,
+                no_update=False,
+                cmd_available="dummy",
+                criteria={},
+                thresholds=[threshold1, threshold2],
+                cache_min_age_minutes=10,
+                state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+            )
+
+        mock_persist_state.assert_called_once()
+
+    @mock.patch("siun.main.Updates.persist_state")
+    @mock.patch("siun.main.load_state")
+    @mock.patch("siun.main.update_state_with_available_packages", return_value=None)
+    def test__get_updates_no_persist_state_when_match_unchanged(
+        self, mock_update_state, mock_load_state, mock_persist_state, default_thresholds
+    ):
+        """Test persist_state not called when last_match == match."""
+        threshold = default_thresholds[0]
+
+        def evaluate_side_effect(self, available_updates):
+            pass  # match remains unchanged
+
+        with mock.patch("siun.state.Updates.evaluate", evaluate_side_effect):
+            state = Updates(
+                criteria_settings={},
+                thresholds=[threshold],
+                available_updates=[],
+                matched_criteria={},
+                last_update=datetime.datetime.now(tz=datetime.UTC),
+                match=threshold,
+                last_match=threshold,
+            )
+            mock_load_state.return_value = state
+
+            _get_updates(
+                no_cache=False,
+                no_update=False,
+                cmd_available="dummy",
+                criteria={},
+                thresholds=[threshold],
+                cache_min_age_minutes=10,
+                state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+            )
+
+        mock_persist_state.assert_not_called()

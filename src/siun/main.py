@@ -61,6 +61,7 @@ def _get_updates(
     cache_min_age = datetime.timedelta(minutes=cache_min_age_minutes)
     existing_state = load_state(state_file_path)
     is_stale = existing_state and existing_state.last_update < (now - cache_min_age)
+    needs_update = False
 
     if existing_state:
         siun_state = existing_state
@@ -71,6 +72,8 @@ def _get_updates(
             siun_state.evaluate(available_updates=existing_state.available_updates)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
+        if siun_state.last_match != siun_state.match:
+            needs_update = True
 
     if no_update:
         return siun_state
@@ -80,6 +83,12 @@ def _get_updates(
             update_state_with_available_packages(siun_state, cmd_available)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
+        try:
+            siun_state.persist_state(state_file_path)
+        except Exception as error:
+            message = f"failed to write state to disk: {error}"
+            raise SiunGetUpdatesError(message) from error
+    elif needs_update:
         try:
             siun_state.persist_state(state_file_path)
         except Exception as error:
