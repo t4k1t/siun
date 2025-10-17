@@ -3,8 +3,8 @@
 import datetime
 import importlib.util
 import shutil
+import subprocess
 import tempfile
-from enum import Enum
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import Any
@@ -12,7 +12,12 @@ from typing import Any
 from pydantic import BaseModel, Field, ValidationError
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, SiunCriterion
-from siun.errors import CriterionError
+from siun.errors import (
+    CmdRunError,
+    CriterionError,
+    SiunStateUpdateError,
+)
+from siun.models import ClickColor, V2Threshold
 from siun.util import get_default_criteria_dir
 
 BUILTIN_CRITERIA = {
@@ -57,62 +62,6 @@ def _load_user_criteria(*, criteria_settings: dict[str, Any], include_path: Path
     return user_criteria
 
 
-class SortableEnum(Enum):
-    """Sortable Enum subclass."""
-
-    def __le__(self, other: Any):
-        """Make enum sortable: Less Than or Equal."""
-        if self.__class__ is other.__class__:
-            if self == other:
-                return True
-            return self.__lt__(other)
-        return NotImplemented
-
-    def __lt__(self, other: Any):
-        """Make enum sortable: Less Than."""
-        if self.__class__ is other.__class__:
-            return list(self.__class__).index(self) < list(self.__class__).index(other)
-        return NotImplemented
-
-
-class Threshold(SortableEnum):
-    """Threshold levels."""
-
-    available = "available"
-    warning = "warning"
-    critical = "critical"
-
-
-class State(SortableEnum):
-    """Define update state."""
-
-    UNKNOWN = "UNKNOWN"
-    OK = "OK"
-    AVAILABLE_UPDATES = "AVAILABLE_UPDATES"
-    WARNING_UPDATES = "WARNING_UPDATES"
-    CRITICAL_UPDATES = "CRITICAL_UPDATES"
-
-
-class StateText(Enum):
-    """Translate state to text representation."""
-
-    OK = "Ok"
-    AVAILABLE_UPDATES = "Updates available"
-    WARNING_UPDATES = "Updates recommended"
-    CRITICAL_UPDATES = "Updates required"
-    UNKNOWN = "Unknown"
-
-
-class StateColor(Enum):
-    """Translate state to color."""
-
-    OK = "green"
-    AVAILABLE_UPDATES = "blue"
-    WARNING_UPDATES = "yellow"
-    CRITICAL_UPDATES = "red"
-    UNKNOWN = "magenta"
-
-
 class FormatObject(BaseModel):
     """Objects for output formatting."""
 
@@ -132,13 +81,12 @@ class Updates(BaseModel):
     """Internale state struct."""
 
     criteria_settings: dict[str, Any] = {}
-    thresholds_settings: dict[str, int] = {}
-    thresholds: dict[int, str] = {}
+    thresholds: list[V2Threshold] = []
     available_updates: list[str] = []
     matched_criteria: dict[str, dict[str, Any]] = {}
-    state: State = State.UNKNOWN
-    last_state: State = State.UNKNOWN
     last_update: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
+    match: V2Threshold | None = None
+    last_match: V2Threshold | None = None
 
     def touch(self) -> None:
         """Set last_update to now."""
@@ -155,14 +103,18 @@ class Updates(BaseModel):
         return len(self.available_updates)
 
     @property
-    def color(self) -> StateColor:
-        """Get color based on state."""
-        return getattr(StateColor, self.state.name)
+    def color(self) -> ClickColor:
+        """Get color of matched threshold."""
+        if not self.match:
+            return ClickColor.reset
+        return self.match.color
 
     @property
-    def text_value(self) -> StateText:
-        """Get text value based on state."""
-        return getattr(StateText, self.state.name)
+    def text_value(self) -> str:
+        """Get text value of matched threshold."""
+        if not self.match:
+            return "No matches."
+        return self.match.text
 
     @property
     def format_object(self) -> FormatObject:
@@ -173,13 +125,13 @@ class Updates(BaseModel):
             matched_criteria=", ".join(self.matched_criteria.keys()),
             matched_criteria_short=",".join([match[:2] for match in self.matched_criteria]),
             score=self.score,
-            status_text=self.text_value.value,
+            status_text=self.text_value,
             update_count=self.count,
             state_color=self.color.value,
-            state_name=self.text_value.name,
+            state_name=self.text_value,
         )
 
-    def update(self, available_updates: list[str] | None = None) -> None:
+    def evaluate(self, available_updates: list[str] | None = None) -> None:
         """Update state of updates."""
         self.touch()
         if available_updates is None:
@@ -209,17 +161,10 @@ class Updates(BaseModel):
                 message = str(error)
                 raise CriterionError(message, name) from error
 
-        thresholds = {
-            threshold: State(f"{name.upper()}_UPDATES").name for name, threshold in self.thresholds_settings.items()
-        }
-        self.thresholds = thresholds
-
-        reversed_thresholds = reversed(self.thresholds.keys())
-        for threshold in reversed_thresholds:
-            if self.score >= threshold:
-                self.state = State(self.thresholds[threshold])
+        for threshold in self.thresholds:
+            if self.score >= threshold.score:
+                self.match = threshold
                 break
-            self.state = State("OK")
 
     def persist_state(self, state_file_path: Path) -> None:
         """
@@ -233,7 +178,9 @@ class Updates(BaseModel):
             # Create parent dir for state file path if it doesn't exist
             Path.mkdir(Path(state_file_path.parent))
         with tempfile.NamedTemporaryFile(mode="w+") as update_file:
-            update_file.write(self.model_dump_json())
+            update_file.write(
+                self.model_dump_json(exclude={"thresholds", "last_match", "matched_criteria", "criteria_settings"})
+            )
             update_file.flush()
             shutil.copy(update_file.name, state_file_path)
 
@@ -262,3 +209,33 @@ def load_state(state_file_path: Path) -> Updates | None:
             else:
                 # Raise normally if anything else is wrong with the state file
                 raise error
+
+
+def fetch_available_updates(cmd: str) -> list[str] | None:
+    """Run external command to get list of available updates."""
+    try:
+        available_updates_run = subprocess.run(  # noqa: S602
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            shell=True,
+        )
+        return available_updates_run.stdout.splitlines()
+
+    except subprocess.CalledProcessError as error:
+        raise CmdRunError(error.stderr) from error
+    except FileNotFoundError as error:
+        raise CmdRunError(error) from error
+
+
+def update_state_with_available_packages(siun_state: Updates, cmd_available: str) -> None:
+    """Fetch available package updates an (re-)evaluate update state."""
+    try:
+        siun_state.evaluate(available_updates=fetch_available_updates(cmd_available))
+    except CmdRunError as error:
+        message = f"failed to query available updates: {error}"
+        raise SiunStateUpdateError(message) from error
+    except CriterionError as error:
+        message = f"failed to check criterion [{error.criterion_name}]: {error.message}"
+        raise SiunStateUpdateError(message) from error

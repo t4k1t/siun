@@ -1,164 +1,122 @@
 """Test formatting module."""
 
-import datetime
-from unittest import mock
-
 import pytest
 
 from siun.formatting import Formatter
-from siun.state import State, Updates
 
 
-class TestFormatter:
-    """Test Formatter class."""
+@pytest.mark.parametrize(
+    "format_object_fixture,expected_output",
+    [
+        ("format_object_ok", "Ok"),
+        ("format_object_available", "Updates available"),
+        ("format_object_recommended", "Updates recommended"),
+        ("format_object_required", "Updates required"),
+    ],
+)
+def test_plain(request, format_object_fixture, expected_output):
+    """Test plain formatter."""
+    format_object = request.getfixturevalue(format_object_fixture)
+    output, output_kwargs = Formatter.format_plain(format_object)
+    assert output == expected_output
+    assert output_kwargs == {}
 
-    @pytest.mark.parametrize(
-        "state,expected_output",
-        [
-            (State.OK, "Ok"),
-            (State.AVAILABLE_UPDATES, "Updates available"),
-            (State.WARNING_UPDATES, "Updates recommended"),
-            (State.CRITICAL_UPDATES, "Updates required"),
-        ],
+
+@pytest.mark.parametrize(
+    "format_object_fixture,expected_output,expected_kwargs",
+    [
+        ("format_object_ok", "Ok", {"fg": "green"}),
+        ("format_object_available", "Updates available", {"fg": "blue"}),
+        ("format_object_recommended", "Updates recommended", {"fg": "yellow"}),
+        ("format_object_required", "Updates required", {"fg": "red"}),
+    ],
+)
+def test_fancy(request, format_object_fixture, expected_output, expected_kwargs):
+    """Test fancy formatter."""
+    format_object = request.getfixturevalue(format_object_fixture)
+    output, output_kwargs = Formatter.format_fancy(format_object)
+    assert output == expected_output
+    assert output_kwargs == expected_kwargs
+
+
+@pytest.mark.parametrize(
+    "format_object_fixture,expected_output,expected_kwargs",
+    [
+        ("format_object_ok", '{"count": 0, "text_value": "Ok", "score": 0}', {}),
+        ("format_object_available", '{"count": 0, "text_value": "Updates available", "score": 0}', {}),
+        ("format_object_recommended", '{"count": 0, "text_value": "Updates recommended", "score": 0}', {}),
+        ("format_object_required", '{"count": 0, "text_value": "Updates required", "score": 0}', {}),
+    ],
+)
+def test_json(request, format_object_fixture, expected_output, expected_kwargs):
+    """Test JSON formatter."""
+    format_object = request.getfixturevalue(format_object_fixture)
+    output, output_kwargs = Formatter.format_json(format_object)
+    assert output == expected_output
+    assert output_kwargs == expected_kwargs
+
+
+def test_json_handles_count_correctly(format_object_factory):
+    """Test count for JSON formatter."""
+    format_object = format_object_factory(
+        available_updates="pkg1, pkg2",
+        status_text="Updates recommended",
+        update_count=42,
+        state_color="yellow",
+        state_name="Updates recommended",
     )
-    def test_plain(self, state, expected_output):
-        """Test plain formatter."""
-        updates = Updates(criteria_settings={}, thresholds_settings={})
-        updates.state = state
-        formatter = Formatter()
+    output, output_kwargs = Formatter.format_json(format_object)
+    assert output == '{"count": 42, "text_value": "Updates recommended", "score": 0}'
+    assert output_kwargs == {}
 
-        output, output_kwargs = formatter.format_plain(updates.format_object)
-        assert output == expected_output
-        assert output_kwargs == {}
 
-    @pytest.mark.parametrize(
-        "state,expected_output,expected_kwargs",
-        [
-            (State.OK, "Ok", {"fg": "green"}),
-            (State.AVAILABLE_UPDATES, "Updates available", {"fg": "blue"}),
-            (State.WARNING_UPDATES, "Updates recommended", {"fg": "yellow"}),
-            (State.CRITICAL_UPDATES, "Updates required", {"fg": "red"}),
-        ],
+def test_json_handles_score_correctly(format_object_factory):
+    """Test score for JSON formatter."""
+    format_object = format_object_factory(
+        available_updates="pkg1, important-pkg",
+        matched_criteria="available, critical",
+        matched_criteria_short="av,cr",
+        score=3,
+        status_text="Updates recommended",
+        update_count=2,
+        state_color="yellow",
+        state_name="Updates recommended",
     )
-    def test_fancy(self, state, expected_output, expected_kwargs):
-        """Test fancy formatter."""
-        updates = Updates(criteria_settings={}, thresholds_settings={})
-        updates.state = state
-        formatter = Formatter()
+    output, output_kwargs = Formatter.format_json(format_object)
+    assert output == '{"count": 2, "text_value": "Updates recommended", "score": 3}'
+    assert output_kwargs == {}
 
-        output, output_kwargs = formatter.format_fancy(updates.format_object)
-        assert output == expected_output
-        assert output_kwargs == expected_kwargs
 
-    @pytest.mark.parametrize(
-        "state,expected_output,expected_kwargs",
-        [
-            (State.OK, '{"count": 0, "text_value": "Ok", "score": 0}', {}),
-            (State.AVAILABLE_UPDATES, '{"count": 0, "text_value": "Updates available", "score": 0}', {}),
-            (State.WARNING_UPDATES, '{"count": 0, "text_value": "Updates recommended", "score": 0}', {}),
-            (State.CRITICAL_UPDATES, '{"count": 0, "text_value": "Updates required", "score": 0}', {}),
-        ],
-    )
-    def test_json(self, state, expected_output, expected_kwargs):
-        """Test JSON formatter."""
-        updates = Updates(criteria_settings={}, thresholds_settings={})
-        updates.state = state
-        formatter = Formatter()
-
-        output, output_kwargs = formatter.format_json(updates.format_object)
-        assert output == expected_output
-        assert output_kwargs == expected_kwargs
-
-    def test_json_handles_count_correctly(self):
-        """Test count for JSON formatter."""
-        updates = Updates(criteria_settings={}, thresholds_settings={})
-        updates.state = State.WARNING_UPDATES
-        with mock.patch.object(updates, "available_updates", ["package"] * 42):
-            formatter = Formatter()
-
-            output, output_kwargs = formatter.format_json(updates.format_object)
-            assert output == '{"count": 42, "text_value": "Updates recommended", "score": 0}'
-            assert output_kwargs == {}
-
-    def test_json_handles_score_correctly(self):
-        """Test score for JSON formatter."""
-        updates = Updates(criteria_settings={}, thresholds_settings={})
-        updates.state = State.WARNING_UPDATES
-        updates.matched_criteria = {"available": {"weight": 1}, "critical": {"weight": 2}}
-        with mock.patch.object(updates, "available_updates", ["package", "important-package"]):
-            formatter = Formatter()
-
-            output, output_kwargs = formatter.format_json(updates.format_object)
-            assert output == '{"count": 2, "text_value": "Updates recommended", "score": 3}'
-            assert output_kwargs == {}
-
-    @pytest.mark.parametrize(
-        "state,expected_output,expected_kwargs",
-        [
-            (State.OK, '{"icon": "archive", "state": "Idle", "text": ""}', {}),
-            (State.AVAILABLE_UPDATES, '{"icon": "archive", "state": "Idle", "text": ""}', {}),
-            (State.WARNING_UPDATES, '{"icon": "archive", "state": "Warning", "text": ""}', {}),
-            (State.CRITICAL_UPDATES, '{"icon": "archive", "state": "Critical", "text": ""}', {}),
-        ],
-    )
-    def test_i3status(self, state, expected_output, expected_kwargs):
-        """Test i3status formatter."""
-        updates = Updates(criteria_settings={}, thresholds_settings={})
-        updates.state = state
-        formatter = Formatter()
-
-        output, output_kwargs = formatter.format_i3status(updates.format_object)
-        assert output == expected_output
-        assert output_kwargs == expected_kwargs
-
-    def test_i3status_builds_text_correctly(self):
-        """Test i3status formatter with multiple matched criteria."""
-        updates = Updates(criteria_settings={}, thresholds_settings={})
-        updates.state = State.WARNING_UPDATES
-        updates.matched_criteria = {"available": {"weight": 1}, "critical": {"weight": 2}}
-        with mock.patch.object(updates, "available_updates", ["package", "important-package"]):
-            formatter = Formatter()
-
-            output, output_kwargs = formatter.format_i3status(updates.format_object)
-            assert output == '{"icon": "archive", "state": "Warning", "text": "av,cr"}'
-            assert output_kwargs == {}
-
-    @pytest.mark.parametrize(
-        "state,expected_output",
-        [
-            (State.OK, "Ok: dummy"),
-            (State.AVAILABLE_UPDATES, "Updates available: dummy"),
-            (State.WARNING_UPDATES, "Updates recommended: dummy"),
-            (State.CRITICAL_UPDATES, "Updates required: dummy"),
-        ],
-    )
-    def test_custom(self, state, expected_output, default_config):
-        """Test custom formatter."""
-        updates = Updates(criteria_settings={}, thresholds_settings={}, available_updates=["dummy"])
-        updates.state = state
-        formatter = Formatter()
-
-        output, output_kwargs = formatter.format_custom(updates.format_object, default_config.custom_format)
-        assert output == expected_output
-        assert output_kwargs == {}
-
-    def test_custom_with_all_values(self):
-        """Test all possible custom formatter values."""
-        template_string_all = (
-            "$available_updates | $last_update | $matched_criteria | "
-            "$matched_criteria_short | $score | $status_text | $update_count"
+@pytest.mark.parametrize(
+    "format_object_fixture,template_string,expected_output",
+    [
+        ("format_object_ok", "$status_text: $available_updates", "Ok: "),
+        ("format_object_available", "$status_text: $available_updates", "Updates available: "),
+        ("format_object_recommended", "$status_text: $available_updates", "Updates recommended: "),
+        ("format_object_required", "$status_text: $available_updates", "Updates required: "),
+        (
+            None,
+            "$available_updates | $last_update | $matched_criteria | $matched_criteria_short | $score | $status_text | $update_count",
+            "dummy | 2025-01-09T00:00:00+00:00 | available, count | av,co | 7 | Updates available | 1",
+        ),
+    ],
+)
+def test_custom(request, format_object_fixture, template_string, expected_output, format_object_factory):
+    """Test custom formatter."""
+    if format_object_fixture is not None:
+        obj = request.getfixturevalue(format_object_fixture)
+    else:
+        obj = format_object_factory(
+            available_updates="dummy",
+            last_update="2025-01-09T00:00:00+00:00",
+            matched_criteria="available, count",
+            matched_criteria_short="av,co",
+            score=7,
+            status_text="Updates available",
+            update_count=1,
+            state_color="blue",
+            state_name="Updates available",
         )
-        last_update = datetime.datetime.fromisoformat("2025-01-09T00:00:00Z")
-        updates = Updates(
-            criteria_settings={},
-            thresholds_settings={},
-            available_updates=["dummy"],
-            last_update=last_update,
-            matched_criteria={"available": {"weight": 4}, "count": {"weight": 3}},
-        )
-        updates.state = State.AVAILABLE_UPDATES
-        formatter = Formatter()
-
-        output, output_kwargs = formatter.format_custom(updates.format_object, template_string_all)
-        assert output == "dummy | 2025-01-09T00:00:00+00:00 | available, count | av,co | 7 | Updates available | 1"
-        assert output_kwargs == {}
+    output, output_kwargs = Formatter.format_custom(obj, template_string)
+    assert output == expected_output
+    assert output_kwargs == {}

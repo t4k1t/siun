@@ -40,7 +40,7 @@ The `check` command supports a few options:
 - `--quiet`: Suppress regular output; Useful if you only want to update the cache file
 - `--no-update`: Don't refresh available updates, only read from cache if available
 - `--no-cache`: Don't read or write cache file
-- `--output-format`: Pick output format for urgency report; Available formats are `[plain|fancy|json|i3status|custom]`
+- `--output-format`: Pick output format for urgency report; Available formats are `[plain|fancy|json|custom]`
 
 ## Installation
 

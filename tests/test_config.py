@@ -6,9 +6,10 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from pydantic import ValidationError
 
 from siun.config import get_config
+from siun.errors import ConfigError
+from siun.models import ClickColor
 
 CONFIG_MISSING_WEIGHTS = """
 [criteria]
@@ -17,6 +18,62 @@ custom_threshold = 1000
 
 CONFIG_CUSTOM_STATE_FILE_PATH = """
 state_file = "/tmp/siun-test-state.json"
+"""
+
+CONFIG_LEGACY_THRESHOLDS = """
+cmd_available = "checkupdates --nocolor"
+thresholds = { available = 1, warning = 2, critical = 3 }
+[criteria]
+count_weight = 1
+"""
+
+CONFIG_V2_THRESHOLDS = """
+cmd_available = "checkupdates --nocolor"
+[[v2_thresholds]]
+name = "critical"
+score = 3
+color = "red"
+text = "cr"
+
+[[v2_thresholds]]
+name = "warning"
+score = 2
+color = "yellow"
+text = "wa"
+
+[[v2_thresholds]]
+name = "available"
+score = 1
+color = "green"
+text = "av"
+
+[criteria]
+count_weight = 1
+"""
+
+CONFIG_W_DUPLICATE_T_NAMES = """
+cmd_available = "checkupdates --nocolor"
+[[v2_thresholds]]
+name = "dupe"
+score = 3
+text = "cr"
+
+[[v2_thresholds]]
+name = "dupe"
+score = 2
+text = "wa"
+
+[criteria]
+count_weight = 1
+"""
+
+CONFIG_W_INVALID_NOTIFICATION_THRESHOLD = """
+cmd_available = "checkupdates --nocolor"
+thresholds = { available = 1, warning = 2, critical = 3 }
+[criteria]
+count_weight = 1
+[notification]
+threshold = "non-existent-threshold"
 """
 
 # Override `$HOME` for consistent tests
@@ -29,7 +86,7 @@ def mock_read_config(_):
 
 
 class TestConfig:
-    """Test Updates class."""
+    """Test Config class."""
 
     @mock.patch("siun.config._read_config", mock_read_config)
     def test_default_config(self, default_config):
@@ -42,7 +99,7 @@ class TestConfig:
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_MISSING_WEIGHTS))
     def test_missing_weights(self, mock_read_config):
         """Test user config with missing weights."""
-        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ValidationError) as exc_info:
+        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ConfigError) as exc_info:
             get_config()
 
         mock_read_config.assert_called_once()
@@ -50,13 +107,22 @@ class TestConfig:
 
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
     def test_custom_state_file_path(self, mock_read_config, default_config):
-        """Test user config with missing weights."""
+        """Test custom state file path."""
         with mock.patch("siun.config.get_default_config_dir"):
             config = get_config()
         assert config != default_config
         assert config.state_file == Path("/tmp/siun-test-state.json")  # noqa: S108
 
         mock_read_config.assert_called_once()
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_W_INVALID_NOTIFICATION_THRESHOLD))
+    def test_invalid_notification_threshold(self, mock_read_config, default_config):
+        """Test notification.threshold validation."""
+        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ConfigError) as exc_info:  # noqa: PT011
+            get_config()
+
+        mock_read_config.assert_called_once()
+        assert "notification.threshold must be one of" in str(exc_info.value)
 
     @mock.patch("siun.config._read_config", mock_read_config)
     def test_xdg_state_home_set(self, default_config):
@@ -66,3 +132,73 @@ class TestConfig:
             config = get_config()
 
         assert config.state_file == Path("/tmp/siun-tests/state/siun/state.json")  # noqa: S108
+
+    @mock.patch("siun.config._read_config", side_effect=OSError)
+    def test_os_error(self, default_config):
+        """Test handling of OSError."""
+        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ConfigError) as exc_info:  # noqa: PT011
+            get_config()
+
+        assert "failed to open config file" in str(exc_info.value)
+
+    @mock.patch("siun.config._read_config", side_effect=tomllib.TOMLDecodeError)
+    def test_toml_error(self, default_config):
+        """Test handling of TOMLDecodeError."""
+        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ConfigError) as exc_info:  # noqa: PT011
+            get_config()
+
+        assert "config file not valid" in str(exc_info.value)
+
+
+class TestThresholdsConfig:
+    """Test config with legacy and v2 thresholds."""
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_LEGACY_THRESHOLDS))
+    def test_legacy_thresholds(self, mock_read_config):
+        """Test config using legacy 'thresholds' dict."""
+        with mock.patch("siun.config.get_default_config_dir"):
+            config = get_config()
+
+        names = [t.name for t in config.v2_thresholds]
+        scores = [t.score for t in config.v2_thresholds]
+
+        assert set(names) == {"critical", "warning", "available"}
+        assert set(scores) == {1, 2, 3}
+        mock_read_config.assert_called_once()
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_V2_THRESHOLDS))
+    def test_v2_thresholds(self, mock_read_config):
+        """Test config using v2_thresholds list."""
+        with mock.patch("siun.config.get_default_config_dir"):
+            config = get_config()
+
+        names = [t.name for t in config.v2_thresholds]
+        scores = [t.score for t in config.v2_thresholds]
+        colors = [getattr(t, "color", None) for t in config.v2_thresholds]
+
+        assert set(names) == {"critical", "warning", "available"}
+        assert set(scores) == {1, 2, 3}
+        assert set(colors) == {ClickColor.red, ClickColor.yellow, ClickColor.green}
+        mock_read_config.assert_called_once()
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_LEGACY_THRESHOLDS))
+    def test_thresholds_equivalence(self, mock_read_config):
+        """Test that legacy and v2 thresholds produce equivalent sorted_thresholds."""
+        with mock.patch("siun.config.get_default_config_dir"):
+            config_legacy = get_config()
+        sorted_legacy = [(t.name, t.score) for t in config_legacy.sorted_thresholds]
+
+        with mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_V2_THRESHOLDS)):
+            config_v2 = get_config()
+        sorted_v2 = [(t.name, t.score) for t in config_v2.sorted_thresholds]
+
+        assert sorted_legacy == sorted_v2
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_W_DUPLICATE_T_NAMES))
+    def test_v2_thresholds_name_uniqueness(self, mock_read_config):
+        """Test v2_thresholds require unique names."""
+        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ConfigError) as exc_info:
+            get_config()
+
+        mock_read_config.assert_called_once()
+        assert "threshold must have a unique name" in str(exc_info.value)

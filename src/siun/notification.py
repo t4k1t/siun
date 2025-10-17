@@ -4,9 +4,7 @@ from enum import Enum
 from string import Template
 from typing import TYPE_CHECKING, cast
 
-from pydantic import BaseModel, Field, field_validator
-
-from siun.state import Threshold
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 if TYPE_CHECKING:
     from siun.state import FormatObject
@@ -50,7 +48,9 @@ class UpdateNotification(BaseModel):
     hints: dict = {}  # pyright: ignore[reportMissingTypeArgument,reportUnknownVariableType]
     timeout: int = Field(default=5000)
     urgency: NotificationUrgency | None = None
-    threshold: Threshold = Threshold.available
+    threshold: str  # NOTE: This field gets validated in the Config model
+
+    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
 
     @field_validator("urgency", mode="before")
     def urgency_must_be_enum(
