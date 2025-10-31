@@ -12,8 +12,8 @@ from siun.errors import ConfigError
 from siun.models import ClickColor
 
 CONFIG_MISSING_WEIGHTS = """
-[criteria]
-custom_threshold = 1000
+[[v2_criteria]]
+name = "custom"
 """
 
 CONFIG_CUSTOM_STATE_FILE_PATH = """
@@ -91,7 +91,11 @@ class TestConfig:
     @mock.patch("siun.config._read_config", mock_read_config)
     def test_default_config(self, default_config):
         """Test empty user config."""
-        config = get_config()
+        with (
+            mock.patch("pathlib.Path.exists", return_value=True),
+            mock.patch("pathlib.Path.is_file", return_value=True),
+        ):
+            config = get_config()
 
         assert config == default_config
         assert config.cmd_available == "pacman -Quq; if [ $? == 1 ]; then :; fi"
@@ -103,7 +107,7 @@ class TestConfig:
             get_config()
 
         mock_read_config.assert_called_once()
-        assert "missing weight" in str(exc_info.value)
+        assert "'v2_criteria.0.weight': Field required" in str(exc_info.value)
 
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
     def test_custom_state_file_path(self, mock_read_config, default_config):
@@ -188,7 +192,11 @@ class TestThresholdsConfig:
             config_legacy = get_config()
         sorted_legacy = [(t.name, t.score) for t in config_legacy.sorted_thresholds]
 
-        with mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_V2_THRESHOLDS)):
+        with (
+            mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_V2_THRESHOLDS)),
+            mock.patch("pathlib.Path.exists", return_value=True),
+            mock.patch("pathlib.Path.is_file", return_value=True),
+        ):
             config_v2 = get_config()
         sorted_v2 = [(t.name, t.score) for t in config_v2.sorted_thresholds]
 

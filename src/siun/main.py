@@ -4,7 +4,6 @@
 
 import datetime
 from pathlib import Path
-from typing import Any
 
 import click
 
@@ -18,7 +17,7 @@ from siun.errors import (
     SiunStateUpdateError,
 )
 from siun.formatting import Formatter, OutputFormat
-from siun.models import V2Threshold
+from siun.models import V2Criterion, V2Threshold
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
 from siun.state import FormatObject, Updates, load_state, update_state_with_available_packages
 
@@ -41,7 +40,7 @@ def _get_updates(
     no_cache: bool,
     no_update: bool,
     cmd_available: str,
-    criteria: dict[str, Any],
+    criteria: list[V2Criterion],
     thresholds: list[V2Threshold],
     cache_min_age_minutes: int,
     state_file_path: Path,
@@ -157,7 +156,7 @@ def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool, conf
             no_cache=not cache,
             no_update=no_update,
             cmd_available=config.cmd_available,
-            criteria=config.criteria,
+            criteria=config.v2_criteria,
             thresholds=config.sorted_thresholds,
             cache_min_age_minutes=config.cache_min_age_minutes,
             state_file_path=config.state_file,

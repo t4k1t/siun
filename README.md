@@ -78,6 +78,65 @@ Configuration happens through a TOML file. By default, `siun` will try to read t
 
 See [examples/config.toml](examples/config.toml) for an example config. This example config also contains the default values which will be used if `siun` can't find any usable configuration.
 
+## Migrating Configuration: v1.x to v2.0+
+
+**Important:** Starting with `siun` version **2.0**, the configuration format has changed.  
+If you are upgrading from any version **≤ 1.5.1**, you must update your config file to avoid errors.
+
+### Why the change?
+
+The new format introduces `v2_thresholds` and `v2_criteria` for better flexibility and future-proofing.  
+Old fields (`thresholds`, `criteria`) are no longer supported.
+
+### What changed?
+
+- **Old fields:**  
+  - `thresholds` → replaced by `v2_thresholds` (list of objects)
+  - `criteria` → replaced by `v2_criteria` (list of objects)
+- **New fields:**  
+  - `v2_thresholds`: List of threshold objects with `name`, `score`, `color`, and `text`
+  - `v2_criteria`: List of criterion objects with `name`, `weight`, and optional parameters
+  - 
+### Migration steps
+
+1. **Backup your old config:**  
+   Copy your existing `config.toml` to a safe location.
+
+2. **Replace old fields:**  
+   Remove any `thresholds` and `criteria` entries.
+
+3. **Add new fields:**  
+   Use the following template:
+
+   ```toml
+   v2_thresholds = [
+     { name = "critical", score = 3, color = "red", text = "Updates required" },
+     { name = "warning", score = 2, color = "yellow", text = "Updates recommended" },
+     { name = "available", score = 1, color = "green", text = "Updates available" }
+   ]
+
+   v2_criteria = [
+     { name = "available", weight = 1 },
+     { name = "pattern", weight = 1, pattern = "^archlinux-keyring$|^linux$|^pacman.*$" },
+     { name = "count", weight = 1, count = 15 }
+   ]
+   ```
+
+4. **Review other config options:**  
+   Ensure any custom settings (e.g., `cmd_available`, `custom_format`, `notification`) are still valid.
+
+1. **Test your setup:**  
+   Run `siun check` and verify there are no configuration errors.
+2. 
+### Troubleshooting
+
+- If you see errors about missing fields or invalid configuration, double-check the migration steps.
+- See [examples/config.toml](examples/config.toml) for a complete, working example.
+
+---
+
+**Note:** If your config is not updated, `siun` 2.0+ will fail to start or revert to defaults.
+
 ### Automatically run `siun check`
 
 It is recommended to set up some kind of automation for running `siun`. One possibility is to set up a `systemd` user unit & timer. Find `siun.service` and `siun.timer` in [examples/systemd](examples/systemd) for examples of such.
@@ -113,14 +172,14 @@ In order to automatically clear `siun`'s cache when packages get updated, it's p
 
 ## Criteria
 
-`siun` checks various criteria to determine how urgent updates are. Each criterion has a `weight` which contributes to a total `score`. This `score` is then compared to a list of thresholds to determine wheter updates are `available`, `recommended` or `required`.
+`siun` checks a configurable list of criteria to determine how urgent updates are. Each criterion is defined in the `[[v2_criteria]]` section of your config file, specifying its type (`name`), parameters, and a `weight` that contributes to the total urgency `score`. The combined score from all matched criteria is then compared against your configured thresholds to determine the update status.
 
 ### Built-in criteria
 
 The following criteria are built-in:
 - `available`: Any updates are available
 - `count`: Number of available updates exceeds threshold
-- `critical`: Any of the available updates is considered a critical package
+- `pattern`: Any of the available updates is considered an important package based on the configured regex pattern
 - `lastupdate`: Time since last update has exceeded threshold
 
 ### Custom criteria

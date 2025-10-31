@@ -1,16 +1,24 @@
 """Config module."""
 
 import shutil
-from collections.abc import Mapping
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as toml_load
-from typing import Any, Self, no_type_check
+from typing import Any, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
 from siun.errors import ConfigError
-from siun.models import ClickColor, V2Threshold
+from siun.models import (
+    CRITERION_REGISTRY,
+    ClickColor,
+    CriterionAvailable,
+    CriterionCount,
+    CriterionCustom,
+    CriterionPattern,
+    V2Criterion,
+    V2Threshold,
+)
 from siun.notification import UpdateNotification
 from siun.util import get_default_config_dir, get_default_state_path
 
@@ -24,13 +32,23 @@ def get_default_thresholds() -> list[V2Threshold]:
     ]
 
 
+def get_default_criteria() -> list[V2Criterion]:
+    """Backwards compatible default criteria."""
+    return [
+        CriterionAvailable(name="available", weight=1),
+        CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
+        CriterionCount(name="count", weight=1, count=15),
+    ]
+
+
+# TODO: Fail if old config values are found so users can fix their configs
 class SiunConfig(BaseModel):
     """Config struct."""
 
     cmd_available: str = Field(default="pacman -Quq; if [ $? == 1 ]; then :; fi")
     cache_min_age_minutes: int = Field(default=30)
     v2_thresholds: list[V2Threshold] = Field(default_factory=get_default_thresholds)
-    criteria: dict[str, Any]
+    v2_criteria: list[V2Criterion] = Field(default_factory=get_default_criteria)
     custom_format: str = Field(default="$status_text: $available_updates")
     state_file: Path = Field(default_factory=get_default_state_path)
     notification: UpdateNotification | None = Field(default=None)
@@ -63,6 +81,21 @@ class SiunConfig(BaseModel):
 
         return self
 
+    @field_validator("v2_criteria")
+    def transform_criteria(cls, value: list[V2Criterion]) -> list[V2Criterion]:
+        """Transform criteria to subclasses of V2Criterion."""
+        criteria: list[V2Criterion] = []
+        for crit in value:
+            model_cls = CRITERION_REGISTRY.get(crit.name)
+            if model_cls:
+                # Builtin criterion
+                criteria.append(model_cls(**crit.model_dump(exclude={"name_short"})))
+            else:
+                # Custom criterion
+                criteria.append(CriterionCustom(**crit.model_dump(exclude={"name_short"})))
+
+        return criteria
+
     @field_validator("v2_thresholds")
     def thresholds_must_have_unique_name(cls, value: list[V2Threshold]) -> list[V2Threshold]:
         """
@@ -77,47 +110,11 @@ class SiunConfig(BaseModel):
 
         return value
 
-    @field_validator("criteria")
-    def criteria_must_have_weight(
-        cls,  # noqa: N805: first arg is the SiunConfig class, not an instance
-        value: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Check if all criteria have a configured weight."""
-        names: set[str] = set()
-        for key in value:
-            if "_" in key:
-                names.add(key.split("_")[0])
-
-        missing_weights: list[str] = []
-        for name in names:
-            if f"{name}_weight" not in value:
-                missing_weights.append(name)
-        if missing_weights:
-            message = f"missing weight for criteria: {', '.join(missing_weights)}"
-            raise ValueError(message)
-
-        return value
-
 
 def _read_config(config_path: Path) -> dict[str, Any]:  # pragma: no cover
     """Read config from disk."""
     with Path.open(config_path, "rb") as file_obj:
         return toml_load(file_obj)
-
-
-@no_type_check
-def _update_nested(d: dict, u: dict | Mapping) -> dict:
-    """
-    Preserve existing keys of nested dicts.
-
-    https://stackoverflow.com/a/3233356
-    """
-    for k, v in u.items():
-        if isinstance(v, Mapping):
-            d[k] = _update_nested(d.get(k, {}), v)
-        else:
-            d[k] = v
-    return d
 
 
 def _migrate_legacy_config(config_path: Path):
@@ -141,29 +138,19 @@ def get_config(config_path: Path | None = None) -> SiunConfig:
     if config_path is None:
         config_path = get_default_config_dir() / Path("config.toml")
     _migrate_legacy_config(config_path)
-    # NOTE: `criteria` setting doesn't get its default value from the model
-    # because we want to allow partial configuration
-    config_dict: dict[str, Any] = {
-        "criteria": {
-            "available_weight": 1,
-            "critical_pattern": "^archlinux-keyring$|^linux$|^pacman.*$",
-            "critical_weight": 1,
-            "count_threshold": 15,
-            "count_weight": 1,
-            "lastupdate_age_hours": 618,  # 7 days
-            "lastupdate_weight": 1,
-        },
-    }
+    config_dict: dict[str, Any] = {}
     if config_path.exists() and config_path.is_file():
         try:
-            user_config = _read_config(config_path)
-            config_dict = _update_nested(config_dict, user_config)
+            config_dict = _read_config(config_path)
         except OSError as error:
             message = f"failed to open config file for reading: {error}"
             raise ConfigError(message, config_path) from error
         except TOMLDecodeError as error:
             message = f"provided config file not valid: {error}"
             raise ConfigError(message, config_path) from error
+    else:
+        message = f"config file not found: {config_path}\nPlease create a configuration file."
+        raise ConfigError(message, config_path)
 
     try:
         config = SiunConfig(**config_dict)

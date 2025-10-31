@@ -11,37 +11,32 @@ from click.testing import CliRunner
 
 from siun.errors import CmdRunError, ConfigError, SiunNotificationError
 from siun.main import _get_updates, _handle_notification, check
+from siun.models import CriterionAvailable, CriterionCount, CriterionPattern
 from siun.state import Updates
 
 EMPTY_STATE = Updates(
-    criteria_settings={},
-    thresholds=[],
     available_updates=[],
     matched_criteria={},
     last_update=datetime.datetime.now(tz=datetime.UTC),
 )
 
 WARNING_STATE = Updates(
-    criteria_settings={
-        "available_weight": 1,
-        "critical_weight": 0,
-        "count_weight": 0,
-        "lastupdate_weight": 0,
-    },
-    thresholds=[],
+    v2_criteria=[
+        CriterionAvailable(name="available", weight=1),
+        CriterionPattern(name="pattern", weight=0, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
+        CriterionCount(name="count", weight=0, count=1),
+    ],
     available_updates=[],
     matched_criteria={"available": {"weight": 1}, "count": {"weight": 1}},
     last_update=datetime.datetime.now(tz=datetime.UTC),
 )
 
 AVAILABLE_STATE = Updates(
-    criteria_settings={
-        "available_weight": 1,
-        "critical_weight": 1,
-        "count_weight": 1,
-        "lastupdate_weight": 0,
-    },
-    thresholds=[],
+    v2_criteria=[
+        CriterionAvailable(name="available", weight=1),
+        CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
+        CriterionCount(name="count", weight=1, count=15),
+    ],
     available_updates=[],
     matched_criteria={"available": {"weight": 1}},
     last_update=datetime.datetime.now(tz=datetime.UTC),
@@ -269,7 +264,7 @@ class TestMain:
         result = _get_updates(
             no_cache=True,
             no_update=True,
-            criteria={},
+            criteria=[],
             thresholds=[],
             cmd_available="",
             cache_min_age_minutes=0,
@@ -287,14 +282,17 @@ class TestMain:
         self, mock__update_state, mock_read_state, mock_persist_state
     ):
         """Test _get_updates with no_update."""
-        config_criteria = {"available_weight": 1, "critical_weight": 0, "count_weight": 2, "count_threshold": 1}
+        config_criteria = [
+            CriterionAvailable(name="available", weight=1),
+            CriterionCount(name="count", weight=2, count=1),
+        ]
         existing_state = Updates(
             last_update="1970-01-01T01:00:00Z",
             state="OK",
             thresholds=[],
             matched_criteria={},
             available_updates=["siun"],
-            criteria_settings={},
+            criteria_settings=[],
         )
         mock_read_state.return_value = existing_state
         result = _get_updates(
@@ -428,7 +426,7 @@ class TestMain:
     ):
         """Test loaded state receives required values from config."""
         loaded_state = Updates(
-            criteria_settings={},
+            criteria_settings=[],
             thresholds=[],
             available_updates=["package"],
             matched_criteria={},
@@ -436,7 +434,10 @@ class TestMain:
         )
         mock_load_state.return_value = loaded_state
 
-        config_criteria = {"available_weight": 1, "critical_weight": 0, "count_weight": 2, "count_threshold": 1}
+        config_criteria = [
+            CriterionAvailable(name="available", weight=1),
+            CriterionCount(name="count", weight=2, count=1),
+        ]
 
         result = _get_updates(
             no_cache=False,
@@ -467,7 +468,7 @@ class TestMain:
 
         with mock.patch("siun.state.Updates.evaluate", evaluate_side_effect):
             state = Updates(
-                criteria_settings={},
+                criteria_settings=[],
                 thresholds=[threshold1, threshold2],
                 available_updates=[],
                 matched_criteria={},
@@ -481,7 +482,7 @@ class TestMain:
                 no_cache=False,
                 no_update=False,
                 cmd_available="dummy",
-                criteria={},
+                criteria=[],
                 thresholds=[threshold1, threshold2],
                 cache_min_age_minutes=10,
                 state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
@@ -503,7 +504,7 @@ class TestMain:
 
         with mock.patch("siun.state.Updates.evaluate", evaluate_side_effect):
             state = Updates(
-                criteria_settings={},
+                criteria_settings=[],
                 thresholds=[threshold],
                 available_updates=[],
                 matched_criteria={},
@@ -517,7 +518,7 @@ class TestMain:
                 no_cache=False,
                 no_update=False,
                 cmd_available="dummy",
-                criteria={},
+                criteria=[],
                 thresholds=[threshold],
                 cache_min_age_minutes=10,
                 state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108

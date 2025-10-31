@@ -25,16 +25,16 @@ class CriterionCount(SiunCriterion):
 
     def is_fulfilled(self, criteria_settings: dict[str, Any], available_updates: list[str]) -> bool:
         """Check criterion."""
-        is_exceeded: bool = len(available_updates) >= criteria_settings["count_threshold"]
+        is_exceeded: bool = len(available_updates) >= criteria_settings["count"]
         return is_exceeded
 
 
-class CriterionCritical(SiunCriterion):
-    """Check if list of available updates contains critical updates according to pattern."""
+class CriterionPattern(SiunCriterion):
+    """Check if list of available updates contains updates according to pattern."""
 
     def is_fulfilled(self, criteria_settings: dict[str, Any], available_updates: list[str]) -> bool:
         """Check criterion."""
-        regex = re.compile(criteria_settings["critical_pattern"])
+        regex = re.compile(criteria_settings["pattern"])
         matches = list(filter(regex.match, available_updates))
 
         return bool(matches)
