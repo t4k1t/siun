@@ -41,7 +41,6 @@ def get_default_criteria() -> list[V2Criterion]:
     ]
 
 
-# TODO: Fail if old config values are found so users can fix their configs
 class SiunConfig(BaseModel):
     """Config struct."""
 
@@ -69,8 +68,28 @@ class SiunConfig(BaseModel):
         """Map thresholds to threshold name."""
         return {t.name: t for t in self.v2_thresholds}
 
+    @model_validator(mode="before")
+    @classmethod
+    def handle_deprecated_fields(cls, data: Any) -> Any:
+        """Check for deprecated fields."""
+        if not isinstance(data, dict):
+            return data
+
+        has_thresholds = "thresholds" in data
+        has_criteria = "criteria" in data
+        if not has_thresholds and not has_criteria:
+            return data  # pyright: ignore[reportUnknownVariableType]
+
+        message_parts = ["Found deprecated config fields: "]
+        if has_thresholds:
+            message_parts.append("- 'thresholds' have been deprecated in favour of 'v2_thresholds'")
+        if has_criteria:
+            message_parts.append("- 'criteria' have been deprecated in favour of 'v2_criteria'")
+
+        raise ValueError("\n".join(message_parts))
+
     @model_validator(mode="after")
-    def notification_must_reference_threshold(self) -> Self:
+    def notification_must_reference_threshold(self: Self) -> Self:
         """Check if notification threshold exists."""
         value = getattr(self, "notification", None)
         thresholds: list[str] = [t.name for t in getattr(self, "v2_thresholds", [])]

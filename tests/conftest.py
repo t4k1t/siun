@@ -40,7 +40,7 @@ def config_w_notification(default_thresholds):
     return SiunConfig(
         cmd_available="pacman -Quq",
         cache_min_age_minutes=30,
-        thresholds=default_thresholds,
+        v2_thresholds=default_thresholds,
         v2_criteria=[
             CriterionAvailable(name="available", weight=1),
             CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
@@ -58,7 +58,7 @@ def config_w_notification_threshold(default_thresholds):
     return SiunConfig(
         cmd_available="pacman -Quq",
         cache_min_age_minutes=30,
-        thresholds=default_thresholds,
+        v2_thresholds=default_thresholds,
         v2_criteria=[
             CriterionAvailable(name="available", weight=1),
             CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
