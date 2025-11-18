@@ -25,13 +25,15 @@ CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
 
 
-def get_formatted_state_text(format_object: FormatObject, output_format: str, custom_format: str) -> str:
+def get_formatted_state_text(format_object: FormatObject, output_format: OutputFormat, custom_format: str) -> str:
     """Generate formatted output text from update state."""
     formatter = Formatter()
     formatter_kwargs = {}
-    if output_format == OutputFormat.CUSTOM.value:
+    if output_format == OutputFormat.CUSTOM:
         formatter_kwargs["template_string"] = custom_format
-    formatted_output, format_options = getattr(formatter, f"format_{output_format}")(format_object, **formatter_kwargs)
+    formatted_output, format_options = getattr(formatter, f"format_{output_format.value}")(
+        format_object, **formatter_kwargs
+    )
     return click.style(formatted_output, **format_options)
 
 
@@ -137,9 +139,12 @@ def cli():  # noqa: D103 # pragma: no cover
 @click.option("--no-update", "-U", is_flag=True, show_default=True, default=False, help="Don't get updates, only check")
 @click.option("--cache/--no-cache", " /-n", show_default=True, default=True, help="Ignore existing state on disk")
 @click.option(
-    "--output-format", "-o", default="plain", type=click.Choice([of.value for of in OutputFormat], case_sensitive=False)
+    "--output-format",
+    "-o",
+    default=OutputFormat.PLAIN,
+    type=click.Choice(OutputFormat, case_sensitive=False),
 )
-def check(*, output_format: str, cache: bool, no_update: bool, quiet: bool, config_path: Path):
+def check(*, output_format: OutputFormat, cache: bool, no_update: bool, quiet: bool, config_path: Path):
     """Check for urgency of available updates."""
     if no_update and not cache:
         raise SiunCLIError(message="--no-update and --no-cache options are mutually exclusive")

@@ -32,7 +32,6 @@ EXPECTED_CLASS = "SiunCriterion"
 def _load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Path | None = None) -> dict[str, Any]:
     """Load user criteria."""
     user_criteria: dict[str, SiunCriterion] = {}
-    enabled_criteria: list[str] = []
     if not include_path:
         include_path = get_default_criteria_dir()
 
@@ -40,7 +39,7 @@ def _load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: P
         return user_criteria
 
     # Get list of enabled user criteria from config
-    enabled_criteria = [criterion.name for criterion in criteria_settings if criterion.weight != 0]
+    enabled_criteria = {criterion.name for criterion in criteria_settings if criterion.weight != 0}
 
     for f_name in include_path.iterdir():
         # Only load enabled user criteria
