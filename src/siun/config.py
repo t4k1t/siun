@@ -103,17 +103,9 @@ class SiunConfig(BaseModel):
     @field_validator("v2_criteria")
     def transform_criteria(cls, value: list[V2Criterion]) -> list[V2Criterion]:
         """Transform criteria to subclasses of V2Criterion."""
-        criteria: list[V2Criterion] = []
-        for crit in value:
-            model_cls = CRITERION_REGISTRY.get(crit.name)
-            if model_cls:
-                # Builtin criterion
-                criteria.append(model_cls(**crit.model_dump(exclude={"name_short"})))
-            else:
-                # Custom criterion
-                criteria.append(CriterionCustom(**crit.model_dump(exclude={"name_short"})))
-
-        return criteria
+        registry = CRITERION_REGISTRY
+        custom_cls = CriterionCustom
+        return [(registry.get(crit.name) or custom_cls)(**crit.model_dump(exclude={"name_short"})) for crit in value]
 
     @field_validator("v2_thresholds")
     def thresholds_must_have_unique_name(cls, value: list[V2Threshold]) -> list[V2Threshold]:
@@ -144,12 +136,12 @@ def _migrate_legacy_config(config_path: Path):
 
 def _format_error_loc(err_loc: tuple[int | str, ...]):
     if err_loc:
-        return f"'{'.'.join([str(loc) for loc in err_loc])}': "
+        return f"'{'.'.join(str(loc) for loc in err_loc)}': "
     return ""
 
 
 def _format_pydantic_error(error: ValidationError):
-    return "; ".join([f"{_format_error_loc(err['loc'])}{err['msg']}" for err in error.errors()])
+    return "; ".join(f"{_format_error_loc(err['loc'])}{err['msg']}" for err in error.errors())
 
 
 def get_config(config_path: Path | None = None) -> SiunConfig:
