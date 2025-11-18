@@ -147,7 +147,11 @@ class TestConfig:
     @mock.patch("siun.config._read_config", mock_read_config)
     def test_xdg_state_home_set(self, default_config):
         """Test XDG_STATE_HOME being set."""
-        with mock.patch.dict(environ, clear=True):
+        with (
+            mock.patch.dict(environ, clear=True),
+            mock.patch("pathlib.Path.exists", return_value=True),
+            mock.patch("pathlib.Path.is_file", return_value=True),
+        ):
             environ["XDG_STATE_HOME"] = "/tmp/siun-tests/state"  # noqa: S108
             config = get_config()
 
