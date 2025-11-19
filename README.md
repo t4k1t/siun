@@ -109,25 +109,47 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
    Use the following template:
 
    ```toml
-   v2_thresholds = [
-     { name = "critical", score = 3, color = "red", text = "Updates required" },
-     { name = "warning", score = 2, color = "yellow", text = "Updates recommended" },
-     { name = "available", score = 1, color = "green", text = "Updates available" }
-   ]
-
-   v2_criteria = [
-     { name = "available", weight = 1 },
-     { name = "pattern", weight = 1, pattern = "^archlinux-keyring$|^linux$|^pacman.*$" },
-     { name = "count", weight = 1, count = 15 }
-   ]
-   ```
+   # Thresholds
+   [[v2_thresholds]]
+   name = "critical"
+   score = 3
+   color = "red"
+   text = "Updates required"
+   
+   [[v2_thresholds]]
+   name = "warning"
+   score = 2
+   color = "yellow"
+   text = "Updates recommended"
+   
+   [[v2_thresholds]]
+   name = "available"
+   score = 1
+   color = "green"
+   text = "Updates available"
+   
+   # Criteria
+   [[v2_criteria]]
+   name = "available"
+   weight = 1
+   
+   [[v2_criteria]]
+   name = "pattern"
+   weight = 1
+   pattern = "^archlinux-keyring$|^linux$|^pacman.*$"
+   
+   [[v2_criteria]]
+   name = "count"
+   weight = 1
+   count = 15
+      ```
 
 4. **Review other config options:**  
    Ensure any custom settings (e.g., `cmd_available`, `custom_format`, `notification`) are still valid.
 
-1. **Test your setup:**  
+5. **Test your setup:**  
    Run `siun check` and verify there are no configuration errors.
-2. 
+
 ### Troubleshooting
 
 - If you see errors about missing fields or invalid configuration, double-check the migration steps.
@@ -135,7 +157,7 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
 
 ---
 
-**Note:** If your config is not updated, `siun` 2.0+ will fail to start or revert to defaults.
+*NOTE: If your config is not updated, `siun` 2.0+ will fail to start or revert to defaults.*
 
 ### Automatically run `siun check`
 
