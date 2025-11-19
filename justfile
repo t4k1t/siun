@@ -16,11 +16,11 @@ alias ta := testall
 # clean dist
 @clean:
     echo "Cleaning up existing artifacts…"
-    rm -f dist/*.{tar.gz,whl}
+    rm -f "dist/*.{tar.gz,whl}"
 
 # build dist
 @build: clean
-    echo "Building dist…""
+    echo "Building dist…"
     uv build
 
 @upgrade:

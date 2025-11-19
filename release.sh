@@ -95,7 +95,7 @@ tag_and_push() {
     next_version="$2"
     read -p "Push tag and changes? (y/N)" confirmation
     case "$confirmation" in
-    Y | y | Yes | yes) git tag -a "v$2" -m "$2 && "git push --follow-tags ;;
+    Y | y | Yes | yes) git tag -a "v$2" -m "$2" && git push --follow-tags ;;
     *) echo "Cancelled push…" ;;
     esac
 }

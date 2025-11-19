@@ -3,30 +3,35 @@
 import datetime
 import importlib.util
 import shutil
+import subprocess
 import tempfile
-from enum import Enum
+import traceback
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
-from siun.criteria import CriterionAvailable, CriterionCount, CriterionCritical, SiunCriterion
-from siun.errors import CriterionError
+from siun.criteria import CriterionAvailable, CriterionCount, CriterionPattern, SiunCriterion
+from siun.errors import (
+    CmdRunError,
+    CriterionError,
+    SiunStateUpdateError,
+)
+from siun.models import ClickColor, V2Criterion, V2Threshold
 from siun.util import get_default_criteria_dir
 
 BUILTIN_CRITERIA = {
     "available": CriterionAvailable(),
     "count": CriterionCount(),
-    "critical": CriterionCritical(),
+    "pattern": CriterionPattern(),
 }
 EXPECTED_CLASS = "SiunCriterion"
 
 
-def _load_user_criteria(*, criteria_settings: dict[str, Any], include_path: Path | None = None) -> dict[str, Any]:
+def _load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Path | None = None) -> dict[str, Any]:
     """Load user criteria."""
     user_criteria: dict[str, SiunCriterion] = {}
-    enabled_criteria: list[str] = []
     if not include_path:
         include_path = get_default_criteria_dir()
 
@@ -34,9 +39,7 @@ def _load_user_criteria(*, criteria_settings: dict[str, Any], include_path: Path
         return user_criteria
 
     # Get list of enabled user criteria from config
-    for setting, value in criteria_settings.items():
-        if "_weight" in setting and value > 0:
-            enabled_criteria.append(setting.split("_weight")[0])
+    enabled_criteria = {criterion.name for criterion in criteria_settings if criterion.weight != 0}
 
     for f_name in include_path.iterdir():
         # Only load enabled user criteria
@@ -57,62 +60,6 @@ def _load_user_criteria(*, criteria_settings: dict[str, Any], include_path: Path
     return user_criteria
 
 
-class SortableEnum(Enum):
-    """Sortable Enum subclass."""
-
-    def __le__(self, other: Any):
-        """Make enum sortable: Less Than or Equal."""
-        if self.__class__ is other.__class__:
-            if self == other:
-                return True
-            return self.__lt__(other)
-        return NotImplemented
-
-    def __lt__(self, other: Any):
-        """Make enum sortable: Less Than."""
-        if self.__class__ is other.__class__:
-            return list(self.__class__).index(self) < list(self.__class__).index(other)
-        return NotImplemented
-
-
-class Threshold(SortableEnum):
-    """Threshold levels."""
-
-    available = "available"
-    warning = "warning"
-    critical = "critical"
-
-
-class State(SortableEnum):
-    """Define update state."""
-
-    UNKNOWN = "UNKNOWN"
-    OK = "OK"
-    AVAILABLE_UPDATES = "AVAILABLE_UPDATES"
-    WARNING_UPDATES = "WARNING_UPDATES"
-    CRITICAL_UPDATES = "CRITICAL_UPDATES"
-
-
-class StateText(Enum):
-    """Translate state to text representation."""
-
-    OK = "Ok"
-    AVAILABLE_UPDATES = "Updates available"
-    WARNING_UPDATES = "Updates recommended"
-    CRITICAL_UPDATES = "Updates required"
-    UNKNOWN = "Unknown"
-
-
-class StateColor(Enum):
-    """Translate state to color."""
-
-    OK = "green"
-    AVAILABLE_UPDATES = "blue"
-    WARNING_UPDATES = "yellow"
-    CRITICAL_UPDATES = "red"
-    UNKNOWN = "magenta"
-
-
 class FormatObject(BaseModel):
     """Objects for output formatting."""
 
@@ -131,14 +78,13 @@ class FormatObject(BaseModel):
 class Updates(BaseModel):
     """Internale state struct."""
 
-    criteria_settings: dict[str, Any] = {}
-    thresholds_settings: dict[str, int] = {}
-    thresholds: dict[int, str] = {}
+    criteria_settings: list[V2Criterion] = []
+    thresholds: list[V2Threshold] = []
     available_updates: list[str] = []
     matched_criteria: dict[str, dict[str, Any]] = {}
-    state: State = State.UNKNOWN
-    last_state: State = State.UNKNOWN
     last_update: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
+    match: V2Threshold | None = None
+    last_match: V2Threshold | None = None
 
     def touch(self) -> None:
         """Set last_update to now."""
@@ -155,14 +101,18 @@ class Updates(BaseModel):
         return len(self.available_updates)
 
     @property
-    def color(self) -> StateColor:
-        """Get color based on state."""
-        return getattr(StateColor, self.state.name)
+    def color(self) -> ClickColor:
+        """Get color of matched threshold."""
+        if not self.match:
+            return ClickColor.reset
+        return self.match.color
 
     @property
-    def text_value(self) -> StateText:
-        """Get text value based on state."""
-        return getattr(StateText, self.state.name)
+    def text_value(self) -> str:
+        """Get text value of matched threshold."""
+        if not self.match:
+            return "No matches."
+        return self.match.text
 
     @property
     def format_object(self) -> FormatObject:
@@ -171,21 +121,22 @@ class Updates(BaseModel):
             available_updates=", ".join(self.available_updates),
             last_update=self.last_update.replace(microsecond=0).isoformat(),
             matched_criteria=", ".join(self.matched_criteria.keys()),
-            matched_criteria_short=",".join([match[:2] for match in self.matched_criteria]),
+            matched_criteria_short=",".join([match["name_short"] for match in self.matched_criteria.values()]),
             score=self.score,
-            status_text=self.text_value.value,
+            status_text=self.text_value,
             update_count=self.count,
             state_color=self.color.value,
-            state_name=self.text_value.name,
+            state_name=self.text_value,
         )
 
-    def update(self, available_updates: list[str] | None = None) -> None:
+    def evaluate(self, available_updates: list[str] | None = None) -> None:
         """Update state of updates."""
         self.touch()
         if available_updates is None:
             available_updates = []
 
         self.available_updates = available_updates
+        self.matched_criteria = {}  # Reset matches
 
         # Load criteria
         criteria = BUILTIN_CRITERIA
@@ -199,27 +150,38 @@ class Updates(BaseModel):
         criteria.update(user_criteria)
 
         # Check criteria
-        for name, criterion in criteria.items():
-            if self.criteria_settings[f"{name}_weight"] <= 0:
-                continue  # Skip criteria with non-positive weight
+        for crit in self.criteria_settings:
+            if crit and crit.weight == 0:
+                continue  # Skip criteria with weight 0
             try:
-                if criterion.is_fulfilled(self.criteria_settings, available_updates):
-                    self.matched_criteria[name] = {"weight": self.criteria_settings[f"{name}_weight"]}
+                user_criteria_settings = crit.model_dump(exclude={"name", "short_name"})
+                if crit.name not in criteria:
+                    message = (
+                        f"Configured criterion '{crit.name}' was not loaded. "
+                        "Likely reasons:\n"
+                        "- Missing or misplaced criterion file\n"
+                        "- Criterion class missing or misnamed\n"
+                        "- 'is_fulfilled' method not implemented\n"
+                        "Check your criteria directory and configuration."
+                    )
+                    raise CriterionError(message, crit.name)
+                if criteria[crit.name].is_fulfilled(user_criteria_settings, available_updates):
+                    self.matched_criteria[crit.name] = user_criteria_settings
+            except CriterionError as error:
+                raise error
             except Exception as error:
-                message = str(error)
-                raise CriterionError(message, name) from error
+                crit_settings = crit.model_dump()
+                tb = traceback.format_exc()
+                message = f"Criterion settings: {crit_settings}\nTraceback:\n{tb}"
+                raise CriterionError(message, crit.name) from error
 
-        thresholds = {
-            threshold: State(f"{name.upper()}_UPDATES").name for name, threshold in self.thresholds_settings.items()
-        }
-        self.thresholds = thresholds
-
-        reversed_thresholds = reversed(self.thresholds.keys())
-        for threshold in reversed_thresholds:
-            if self.score >= threshold:
-                self.state = State(self.thresholds[threshold])
+        for threshold in self.thresholds:
+            if self.score >= threshold.score:
+                self.match = threshold
                 break
-            self.state = State("OK")
+        else:
+            # Reset match if no thresholds matched
+            self.match = None
 
     def persist_state(self, state_file_path: Path) -> None:
         """
@@ -233,32 +195,47 @@ class Updates(BaseModel):
             # Create parent dir for state file path if it doesn't exist
             Path.mkdir(Path(state_file_path.parent))
         with tempfile.NamedTemporaryFile(mode="w+") as update_file:
-            update_file.write(self.model_dump_json())
+            update_file.write(
+                self.model_dump_json(exclude={"thresholds", "last_match", "matched_criteria", "criteria_settings"})
+            )
             update_file.flush()
             shutil.copy(update_file.name, state_file_path)
 
 
 def load_state(state_file_path: Path) -> Updates | None:
     """Read state from disk."""
-
-    def is_pytype_error(err_input: Any):
-        if not isinstance(err_input, dict):
-            return False
-        if "py-type" in err_input:
-            return True
-
     if not state_file_path.exists():
         return None
 
     with Path.open(state_file_path) as update_file:
-        try:
-            return Updates.model_validate_json(update_file.read())
-        except ValidationError as error:
-            # Handle state file from siun<=1.3.0
-            pytype_errors = [is_pytype_error(err.get("input")) for err in error.errors()]
-            if all(pytype_errors):
-                # Treat state as unknown, it'll get fixed automatically next time a write occurs
-                return None
-            else:
-                # Raise normally if anything else is wrong with the state file
-                raise error
+        return Updates.model_validate_json(update_file.read())
+
+
+def fetch_available_updates(cmd: str) -> list[str] | None:
+    """Run external command to get list of available updates."""
+    try:
+        available_updates_run = subprocess.run(  # noqa: S602
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            shell=True,
+        )
+        return available_updates_run.stdout.splitlines()
+
+    except subprocess.CalledProcessError as error:
+        raise CmdRunError(error.stderr) from error
+    except FileNotFoundError as error:
+        raise CmdRunError(error) from error
+
+
+def update_state_with_available_packages(siun_state: Updates, cmd_available: str) -> None:
+    """Fetch available package updates an (re-)evaluate update state."""
+    try:
+        siun_state.evaluate(available_updates=fetch_available_updates(cmd_available))
+    except CmdRunError as error:
+        message = f"failed to query available updates: {error}"
+        raise SiunStateUpdateError(message) from error
+    except CriterionError as error:
+        message = f"failed to check criterion [{error.criterion_name}]: {error.message}"
+        raise SiunStateUpdateError(message) from error
