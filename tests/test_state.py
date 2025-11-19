@@ -9,6 +9,7 @@ from unittest import mock
 import pytest
 
 from siun.errors import CmdRunError, CriterionError
+from siun.models import CriterionCustom
 from siun.state import FormatObject, Updates, _load_user_criteria, fetch_available_updates, load_state
 from siun.util import get_default_criteria_dir
 
@@ -18,7 +19,7 @@ class TestUpdates:
 
     def test_defaults_ok(self, default_config, default_thresholds):
         """Test no available updates."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.evaluate(available_updates=[])
         result = updates.text_value
 
@@ -26,7 +27,7 @@ class TestUpdates:
 
     def test_defaults_available(self, default_config, default_thresholds):
         """Test available updates."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.evaluate(available_updates=["siun"])
         result = updates.text_value
 
@@ -34,7 +35,7 @@ class TestUpdates:
 
     def test_defaults_recommended(self, default_config, default_thresholds):
         """Test recommended updates."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.evaluate(available_updates=["siun", "linux"])
         result = updates.text_value
 
@@ -42,7 +43,7 @@ class TestUpdates:
 
     def test_defaults_required(self, default_config, default_thresholds):
         """Test required updates."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.evaluate(available_updates=["siun", "linux", *["package"] * 15])
         result = updates.text_value
 
@@ -54,8 +55,8 @@ class TestUpdates:
         json_content = io.StringIO(
             "{"
             '"last_update": "1970-01-01T01:00:00Z", '
-            '"state": "OK", "thresholds": [], '
-            '"matched_criteria": {}, "available_updates": ["siun"], "criteria_settings": {}'
+            '"state": "OK", '
+            '"matched_criteria": {}, "available_updates": ["siun"]'
             "}"
         )
         mock_open.return_value = json_content
@@ -73,7 +74,7 @@ class TestUpdates:
             "{"
             '"last_update": "1970-01-01T01:00:00Z", '
             '"state": "OK", "thresholds": [], '
-            '"matched_criteria": {}, "available_updates": [], "criteria_settings": {}'
+            '"matched_criteria": {}, "available_updates": []'
             "}"
         )
         mock_open.return_value = json_content
@@ -92,7 +93,7 @@ class TestUpdates:
             "{"
             '"last_update": "1970-01-01T01:00:00Z", '
             '"state": {"py-type": "State", "value": "OK"}, "thresholds": [], '
-            '"matched_criteria": {}, "available_updates": [], "criteria_settings": {}'
+            '"matched_criteria": {}, "available_updates": []'
             "}"
         )
         mock_open.return_value = json_content
@@ -112,7 +113,7 @@ class TestUpdates:
         self, default_config, default_thresholds, monkeypatch
     ):
         """Test Updates.update raises CriterionError if user criteria loading fails."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
 
         def fail_loader(**kwargs):
             raise RuntimeError("fail!")  # noqa: EM101
@@ -125,9 +126,13 @@ class TestUpdates:
 
     def test_format_object_populated(self, default_config, default_thresholds):
         """Test format_object returns correct values for populated state."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.criteria)
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.available_updates = ["siun", "linux"]
-        updates.matched_criteria = {"available": {"weight": 1}, "count": {"weight": 2}}
+        # updates.matched_criteria = {"available": {"weight": 1}, "count": {"weight": 2}}
+        updates.matched_criteria = {
+            "available": {"weight": 1, "name_short": "av"},
+            "count": {"weight": 2, "name_short": "co"},
+        }
         updates.match = default_thresholds[1]  # Assume at least two thresholds
         fmt = updates.format_object
         assert isinstance(fmt, FormatObject)
@@ -138,13 +143,36 @@ class TestUpdates:
         assert fmt.status_text == updates.text_value
         assert fmt.update_count == 2
 
+    def test_match_reset_when_no_thresholds_matched(self, default_config, default_thresholds):
+        """Test that match is reset to None when score is below all thresholds."""
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
+        updates.match = default_thresholds[-1]
+        updates.evaluate(available_updates=[])
+        assert updates.match is None
+
+    def test_match_not_reset_if_threshold_matched(self, default_config, default_thresholds):
+        """Test that match is set if a threshold is matched."""
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
+        updates.evaluate(available_updates=["siun", "linux"])
+        assert updates.match is not None
+        assert updates.match.score <= updates.score
+
+    def test_match_reset_on_score_drop(self, default_config, default_thresholds):
+        """Test that match is reset if score drops below all thresholds after being previously set."""
+        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
+        updates.evaluate(available_updates=["siun", "linux", "package"])
+        assert updates.match is not None
+        updates.evaluate(available_updates=[])
+        assert updates.score == 0
+        assert updates.match is None
+
 
 class TestCustomCriteria:
     """Test custom criteria."""
 
     def test_load_custom_criterion(self, tmp_path):
         """Test custom criteria can be loaded."""
-        criteria_settings = {"test_criterion_weight": 2}
+        criteria_settings = [CriterionCustom(name="test_criterion", weight=2)]
         include_path = tmp_path / "criteria"
         include_path.mkdir()
         criterion_content = """class SiunCriterion:
@@ -157,7 +185,7 @@ class TestCustomCriteria:
         assert user_criteria
         assert "test_criterion" in user_criteria
 
-    @pytest.mark.parametrize("criteria_settings", [{"test_criterion_weight": 0}, {}])
+    @pytest.mark.parametrize("criteria_settings", [[CriterionCustom(name="test_criterion", weight=0)], []])
     def test_custom_criterion_not_loaded_wo_weight(self, tmp_path, criteria_settings):
         """Test custom criteria not getting loaded without a configured weight."""
         include_path = tmp_path / "criteria"

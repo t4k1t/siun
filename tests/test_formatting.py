@@ -74,8 +74,8 @@ def test_json_handles_score_correctly(format_object_factory):
     """Test score for JSON formatter."""
     format_object = format_object_factory(
         available_updates="pkg1, important-pkg",
-        matched_criteria="available, critical",
-        matched_criteria_short="av,cr",
+        matched_criteria="available, pattern",
+        matched_criteria_short="av,pa",
         score=3,
         status_text="Updates recommended",
         update_count=2,

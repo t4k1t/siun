@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from siun.config import SiunConfig, get_default_thresholds
-from siun.models import V2Threshold
+from siun.models import CriterionAvailable, CriterionCount, CriterionPattern, V2Threshold
 from siun.state import FormatObject, Updates
 
 
@@ -23,16 +23,12 @@ def default_config(default_thresholds):
     return SiunConfig(
         cmd_available="pacman -Quq; if [ $? == 1 ]; then :; fi",
         cache_min_age_minutes=30,
-        thresholds=default_thresholds,
-        criteria={
-            "available_weight": 1,
-            "critical_pattern": "^archlinux-keyring$|^linux$|^pacman.*$",
-            "critical_weight": 1,
-            "count_threshold": 15,
-            "count_weight": 1,
-            "lastupdate_age_hours": 618,  # 7 days
-            "lastupdate_weight": 1,
-        },
+        v2_thresholds=default_thresholds,
+        v2_criteria=[
+            CriterionAvailable(name="available", weight=1),
+            CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
+            CriterionCount(name="count", weight=1, count=15),
+        ],
         custom_format="$status_text: $available_updates",
         state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
     )
@@ -44,16 +40,12 @@ def config_w_notification(default_thresholds):
     return SiunConfig(
         cmd_available="pacman -Quq",
         cache_min_age_minutes=30,
-        thresholds=default_thresholds,
-        criteria={
-            "available_weight": 1,
-            "critical_pattern": "^archlinux-keyring$|^linux$|^pacman.*$",
-            "critical_weight": 1,
-            "count_threshold": 2,
-            "count_weight": 1,
-            "lastupdate_age_hours": 618,  # 7 days
-            "lastupdate_weight": 1,
-        },
+        v2_thresholds=default_thresholds,
+        v2_criteria=[
+            CriterionAvailable(name="available", weight=1),
+            CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
+            CriterionCount(name="count", weight=1, count=2),
+        ],
         custom_format="$status_text: $available_updates",
         state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
         notification={"title": "siun test notification", "threshold": "available"},
@@ -66,16 +58,12 @@ def config_w_notification_threshold(default_thresholds):
     return SiunConfig(
         cmd_available="pacman -Quq",
         cache_min_age_minutes=30,
-        thresholds=default_thresholds,
-        criteria={
-            "available_weight": 1,
-            "critical_pattern": "^archlinux-keyring$|^linux$|^pacman.*$",
-            "critical_weight": 1,
-            "count_threshold": 2,
-            "count_weight": 1,
-            "lastupdate_age_hours": 618,  # 7 days
-            "lastupdate_weight": 1,
-        },
+        v2_thresholds=default_thresholds,
+        v2_criteria=[
+            CriterionAvailable(name="available", weight=1),
+            CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
+            CriterionCount(name="count", weight=1, count=2),
+        ],
         custom_format="$status_text: $available_updates",
         state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
         notification={"title": "siun test notification", "threshold": "warning"},
@@ -89,15 +77,11 @@ def v2_config_w_custom_format(default_thresholds):
         cmd_available="pacman -Quq; if [ $? == 1 ]; then :; fi",
         cache_min_age_minutes=30,
         v2_thresholds=[V2Threshold(score=1, name="available", text="Updates available")],
-        criteria={
-            "available_weight": 1,
-            "critical_pattern": "^archlinux-keyring$|^linux$|^pacman.*$",
-            "critical_weight": 1,
-            "count_threshold": 15,
-            "count_weight": 1,
-            "lastupdate_age_hours": 618,  # 7 days
-            "lastupdate_weight": 1,
-        },
+        v2_criteria=[
+            CriterionAvailable(name="available", weight=1),
+            CriterionCount(name="count", weight=1, count=15),
+            CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
+        ],
         custom_format="$status_text: $available_updates",
         state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
     )
@@ -107,13 +91,10 @@ def v2_config_w_custom_format(default_thresholds):
 def state_stale(default_thresholds):
     """Expired Update state."""
     return Updates(
-        criteria_settings={
-            "available_weight": 1,
-            "critical_weight": 0,
-            "count_weight": 1,
-            "count_threshold": 2,
-            "lastupdate_weight": 0,
-        },
+        criteria_settings=[
+            CriterionAvailable(name="available", weight=1),
+            CriterionCount(name="count", weight=1, count=2),
+        ],
         thresholds_settings=default_thresholds,
         available_updates=[],
         last_update=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=1),

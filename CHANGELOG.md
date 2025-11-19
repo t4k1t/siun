@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `v2_thresholds` setting for more flexible threshold configuration.
+- Added `v2_critera` setting for more flexible and robust criteria configuration.
 
 ### Changed
 
@@ -17,10 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Criteria and threshold settings will now be considered on every run, even when the cache can be used.
 - Some internals have been refactored. The result is more flexible, but also more readable code.
 - Updated dependencies.
+- Simplified configuration loading:
+    * No more nested dicts 󱁖
+    * More idiomatic use of pydantic models
+- Renamed `critical` criterion to `pattern`
 
 ### Removed
 
 - Removed the `i3status` output format - similar results can be achieved with the `custom` output format.
+- `thresholds` field from configuration - use `v2_thresholds` instead.
+- `criteria` field from configuration - use `v2_criteria` instead.
 
 ## [1.5.1] - 2025-09-20
 
