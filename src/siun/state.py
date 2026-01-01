@@ -3,7 +3,6 @@
 import datetime
 import importlib.util
 import shutil
-import subprocess
 import tempfile
 import traceback
 from importlib.machinery import SourceFileLoader
@@ -18,7 +17,8 @@ from siun.errors import (
     CriterionError,
     SiunStateUpdateError,
 )
-from siun.models import ClickColor, V2Criterion, V2Threshold
+from siun.models import ClickColor, PackageUpdate, V2Criterion, V2Threshold
+from siun.providers import UpdateProvider
 from siun.util import get_default_criteria_dir
 
 BUILTIN_CRITERIA = {
@@ -31,6 +31,10 @@ EXPECTED_CLASS = "SiunCriterion"
 
 def _load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Path | None = None) -> dict[str, Any]:
     """Load user criteria."""
+    # TODO: Improved error handling
+    # TODO: Only load from trusted dir, unless validated (how to validate? permisissions? what else?)
+    # TODO: Try running code in subprocess with restricted permissions
+    # TODO: Document risks
     user_criteria: dict[str, SiunCriterion] = {}
     if not include_path:
         include_path = get_default_criteria_dir()
@@ -44,7 +48,7 @@ def _load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: P
     for f_name in include_path.iterdir():
         # Only load enabled user criteria
         if f_name.suffix != ".py" or f_name.stem not in enabled_criteria:
-            continue
+            continue  # Skip non-Python files
         file_path = include_path / f_name
         py_mod_loader = SourceFileLoader(file_path.stem, file_path.as_posix())
         py_mod_spec = importlib.util.spec_from_loader(py_mod_loader.name, py_mod_loader)
@@ -80,7 +84,7 @@ class Updates(BaseModel):
 
     criteria_settings: list[V2Criterion] = []
     thresholds: list[V2Threshold] = []
-    available_updates: list[str] = []
+    available_updates: list[PackageUpdate] = []
     matched_criteria: dict[str, dict[str, Any]] = {}
     last_update: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
     match: V2Threshold | None = None
@@ -118,7 +122,7 @@ class Updates(BaseModel):
     def format_object(self) -> FormatObject:
         """Provide prepared values for formatters."""
         return FormatObject(
-            available_updates=", ".join(self.available_updates),
+            available_updates=", ".join([update.name for update in self.available_updates]),
             last_update=self.last_update.replace(microsecond=0).isoformat(),
             matched_criteria=", ".join(self.matched_criteria.keys()),
             matched_criteria_short=",".join([match["name_short"] for match in self.matched_criteria.values()]),
@@ -129,7 +133,7 @@ class Updates(BaseModel):
             state_name=self.text_value,
         )
 
-    def evaluate(self, available_updates: list[str] | None = None) -> None:
+    def evaluate(self, available_updates: list[PackageUpdate] | None = None) -> None:
         """Update state of updates."""
         self.touch()
         if available_updates is None:
@@ -165,7 +169,9 @@ class Updates(BaseModel):
                         "Check your criteria directory and configuration."
                     )
                     raise CriterionError(message, crit.name)
-                if criteria[crit.name].is_fulfilled(user_criteria_settings, available_updates):
+                if criteria[crit.name].is_fulfilled(
+                    user_criteria_settings, [update.name for update in available_updates]
+                ):
                     self.matched_criteria[crit.name] = user_criteria_settings
             except CriterionError as error:
                 raise error
@@ -211,28 +217,10 @@ def load_state(state_file_path: Path) -> Updates | None:
         return Updates.model_validate_json(update_file.read())
 
 
-def fetch_available_updates(cmd: str) -> list[str] | None:
-    """Run external command to get list of available updates."""
+def update_state_with_available_packages(siun_state: Updates, update_provider: UpdateProvider) -> None:
+    """Fetch available package updates and (re-)evaluate update state."""
     try:
-        available_updates_run = subprocess.run(  # noqa: S602
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=True,
-        )
-        return available_updates_run.stdout.splitlines()
-
-    except subprocess.CalledProcessError as error:
-        raise CmdRunError(error.stderr) from error
-    except FileNotFoundError as error:
-        raise CmdRunError(error) from error
-
-
-def update_state_with_available_packages(siun_state: Updates, cmd_available: str) -> None:
-    """Fetch available package updates an (re-)evaluate update state."""
-    try:
-        siun_state.evaluate(available_updates=fetch_available_updates(cmd_available))
+        siun_state.evaluate(available_updates=update_provider.fetch_updates())
     except CmdRunError as error:
         message = f"failed to query available updates: {error}"
         raise SiunStateUpdateError(message) from error

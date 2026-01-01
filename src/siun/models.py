@@ -118,3 +118,13 @@ class CriterionCustom(V2Criterion):
 
     name: str = "custom"
     model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
+
+
+class PackageUpdate(BaseModel):
+    """Struct representing an available update."""
+
+    name: str
+    old_version: str | None
+    new_version: str | None
+
+    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]

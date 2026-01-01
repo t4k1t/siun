@@ -20,6 +20,7 @@ from siun.models import (
     V2Threshold,
 )
 from siun.notification import UpdateNotification
+from siun.providers import UPDATE_PROVIDER_REGISTRY, UpdateProvider
 from siun.util import get_default_config_dir, get_default_state_path
 
 
@@ -41,10 +42,16 @@ def get_default_criteria() -> list[V2Criterion]:
     ]
 
 
+def get_default_update_provider() -> UpdateProvider:
+    """Get default update provider."""
+    return UpdateProvider(name="pacman")
+
+
 class SiunConfig(BaseModel):
     """Config struct."""
 
     cmd_available: str = Field(default="pacman -Quq; if [ $? == 1 ]; then :; fi")
+    update_provider: UpdateProvider = Field(default_factory=get_default_update_provider)
     cache_min_age_minutes: int = Field(default=30)
     v2_thresholds: list[V2Threshold] = Field(default_factory=get_default_thresholds)
     v2_criteria: list[V2Criterion] = Field(default_factory=get_default_criteria)
@@ -120,6 +127,12 @@ class SiunConfig(BaseModel):
             raise ValueError(message)
 
         return value
+
+    @field_validator("update_provider")
+    def transform_update_provider(cls, value: UpdateProvider) -> UpdateProvider:
+        """Transform update provider to subclasses of UpdateProvider."""
+        registry = UPDATE_PROVIDER_REGISTRY
+        return registry.get(value.name)(**value.model_dump())
 
 
 def _read_config(config_path: Path) -> dict[str, Any]:  # pragma: no cover
