@@ -124,7 +124,7 @@ class PackageUpdate(BaseModel):
     """Struct representing an available update."""
 
     name: str
-    old_version: str | None
-    new_version: str | None
+    old_version: str | None = None
+    new_version: str | None = None
 
     model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]

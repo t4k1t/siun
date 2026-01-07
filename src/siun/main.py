@@ -3,6 +3,7 @@
 """siun - Know how urgently your system needs to be updated."""
 
 import datetime
+import logging
 from pathlib import Path
 
 import click
@@ -22,8 +23,11 @@ from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATU
 from siun.providers import UpdateProvider
 from siun.state import FormatObject, Updates, load_state, update_state_with_available_packages
 
+LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
+
+logger = logging.getLogger("siun")
 
 
 def get_formatted_state_text(format_object: FormatObject, output_format: OutputFormat, custom_format: str) -> str:
@@ -42,7 +46,6 @@ def _get_updates(
     *,
     no_cache: bool,
     no_update: bool,
-    cmd_available: str,
     criteria: list[V2Criterion],
     thresholds: list[V2Threshold],
     cache_min_age_minutes: int,
@@ -127,7 +130,7 @@ def _handle_notification(config: SiunConfig, siun_state: Updates) -> None:
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(__version__)
 def cli():  # noqa: D103 # pragma: no cover
-    pass
+    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
 
 
 @cli.command()
@@ -162,7 +165,6 @@ def check(*, output_format: OutputFormat, cache: bool, no_update: bool, quiet: b
         siun_state = _get_updates(
             no_cache=not cache,
             no_update=no_update,
-            cmd_available=config.cmd_available,
             criteria=config.v2_criteria,
             thresholds=config.sorted_thresholds,
             cache_min_age_minutes=config.cache_min_age_minutes,

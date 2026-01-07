@@ -2,6 +2,7 @@
 
 import datetime
 import importlib.util
+import logging
 import shutil
 import tempfile
 import traceback
@@ -28,10 +29,11 @@ BUILTIN_CRITERIA = {
 }
 EXPECTED_CLASS = "SiunCriterion"
 
+logger = logging.getLogger("siun")
 
-def _load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Path | None = None) -> dict[str, Any]:
+
+def load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Path | None = None) -> dict[str, Any]:
     """Load user criteria."""
-    # TODO: Improved error handling
     # TODO: Only load from trusted dir, unless validated (how to validate? permisissions? what else?)
     # TODO: Try running code in subprocess with restricted permissions
     # TODO: Document risks
@@ -58,6 +60,24 @@ def _load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: P
         py_mod = importlib.util.module_from_spec(py_mod_spec)
         py_mod_loader.exec_module(py_mod)
         if hasattr(py_mod, EXPECTED_CLASS):
+            class_obj = getattr(py_mod, EXPECTED_CLASS)
+            # Check inheritance
+            if not issubclass(class_obj, SiunCriterion):
+                # TODO: Test/Try
+                logger.debug(
+                    "[%s] Skipping '%s': Does not contain subclass of SiunCriterion",
+                    load_user_criteria.__name__,
+                    file_path,
+                )
+                continue
+            if not hasattr(class_obj, "is_fulfilled") or not callable(class_obj.is_fulfilled):
+                # TODO: Test/Try
+                logger.debug(
+                    "[%s] Skipping '%s': Missing 'is_fulfilled' method",
+                    load_user_criteria.__name__,
+                    file_path,
+                )
+                continue
             class_inst = py_mod.SiunCriterion()
             user_criteria[file_path.stem] = class_inst
 
@@ -146,7 +166,7 @@ class Updates(BaseModel):
         criteria = BUILTIN_CRITERIA
         user_criteria = {}
         try:
-            user_criteria = _load_user_criteria(criteria_settings=self.criteria_settings)
+            user_criteria = load_user_criteria(criteria_settings=self.criteria_settings)
         except Exception as error:
             message = f"unable to load user criteria: {error}"
             raise CriterionError(message, None) from error

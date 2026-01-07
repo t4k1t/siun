@@ -6,7 +6,7 @@ from tomllib import TOMLDecodeError
 from tomllib import load as toml_load
 from typing import Any, Self
 
-from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, computed_field, field_validator, model_validator
 
 from siun.errors import ConfigError
 from siun.models import (
@@ -50,7 +50,6 @@ def get_default_update_provider() -> UpdateProvider:
 class SiunConfig(BaseModel):
     """Config struct."""
 
-    cmd_available: str = Field(default="pacman -Quq; if [ $? == 1 ]; then :; fi")
     update_provider: UpdateProvider = Field(default_factory=get_default_update_provider)
     cache_min_age_minutes: int = Field(default=30)
     v2_thresholds: list[V2Threshold] = Field(default_factory=get_default_thresholds)
@@ -84,7 +83,8 @@ class SiunConfig(BaseModel):
 
         has_thresholds = "thresholds" in data
         has_criteria = "criteria" in data
-        if not has_thresholds and not has_criteria:
+        has_cmd_available = "cmd_available" in data
+        if not has_thresholds and not has_criteria and not has_cmd_available:
             return data  # pyright: ignore[reportUnknownVariableType]
 
         message_parts = ["Found deprecated config fields: "]
@@ -92,6 +92,8 @@ class SiunConfig(BaseModel):
             message_parts.append("- 'thresholds' have been deprecated in favour of 'v2_thresholds'")
         if has_criteria:
             message_parts.append("- 'criteria' have been deprecated in favour of 'v2_criteria'")
+        if has_cmd_available:
+            message_parts.append("- 'cmd_available' has been deprecated in favour of 'update_provider'")
 
         raise ValueError("\n".join(message_parts))
 
@@ -133,6 +135,8 @@ class SiunConfig(BaseModel):
         """Transform update provider to subclasses of UpdateProvider."""
         registry = UPDATE_PROVIDER_REGISTRY
         return registry.get(value.name)(**value.model_dump())
+
+    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
 
 
 def _read_config(config_path: Path) -> dict[str, Any]:  # pragma: no cover

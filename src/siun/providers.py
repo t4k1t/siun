@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import subprocess
 
@@ -10,6 +11,12 @@ from pydantic import BaseModel, ConfigDict
 from siun.models import PackageUpdate
 
 UPDATE_PROVIDER_REGISTRY: dict[str, type[UpdateProvider]] = {}
+# TODO: Document how pattern is used
+PACMAN_PATTERN: str = (
+    r"^(?P<name>[_\-0-9a-z]+)\s+(?P<old_version>[\-\.\:0-9a-z]+)\s+\-\>\s+(?P<new_version>[\-\.\:0-9a-z]+)$"
+)
+
+logger = logging.getLogger("siun")
 
 
 class UpdateProvider(BaseModel):
@@ -17,25 +24,46 @@ class UpdateProvider(BaseModel):
 
     name: str
 
-    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
-
     def fetch_updates(self) -> list[PackageUpdate]:
         """Scaffolding for fetching list of available updates."""
         raise NotImplementedError
+
+    def parse_updates(self, lines: list[str], pattern: str) -> list[PackageUpdate]:
+        """Parse list of available update strings into list of PackageUpdate objects."""
+        available_updates: list[PackageUpdate] = []
+        for line in lines:
+            match = re.match(pattern, line)
+            if not match or "name" not in match.groupdict():
+                logger.warning("[%s update provider] failed to parse output: %s", self.name, line)
+                continue
+
+            match_dict = match.groupdict()
+            available_updates.append(
+                PackageUpdate(
+                    name=match_dict["name"],
+                    old_version=match_dict.get("old_version"),
+                    new_version=match_dict.get("new_version"),
+                )
+            )
+
+        return available_updates
 
     def __init_subclass__(cls, **kwargs: object) -> None:
         """Register subclass in criterion registry."""
         super.__init_subclass__(**kwargs)
         UPDATE_PROVIDER_REGISTRY[cls.name] = cls
 
+    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
+
 
 class UpdateProviderPacman(UpdateProvider):
     """Update provider for pacman."""
 
+    # TODO: `check_aur`
+    # TODO: Optional smart detection
     name: str = "pacman"
     cmd: list[str] = ["pacman", "-Qu"]
-    # TODO: Decide if pattern should be overridable
-    pattern: str = r"^([a-z_\-]+)\s+([0-9\-\.]+)\s+\-\>\s+([0-9\-\.]+)$"
+    pattern: str = PACMAN_PATTERN
 
     def fetch_updates(self) -> list[PackageUpdate]:
         """Get list of updates from pacman."""
@@ -47,16 +75,7 @@ class UpdateProviderPacman(UpdateProvider):
                 text=True,
                 shell=False,
             )
-            available_updates: list[PackageUpdate] = []
-            for line in available_updates_run.stdout.splitlines():
-                match = re.match(self.pattern, line)
-                if not match:
-                    return available_updates
-
-                available_updates.append(
-                    PackageUpdate(name=match.group(1), old_version=match.group(2), new_version=match.group(3))
-                )
-            return available_updates
+            return self.parse_updates(available_updates_run.stdout.splitlines(), self.pattern)
 
         except subprocess.CalledProcessError as error:
             if error.returncode == 1:
@@ -73,12 +92,10 @@ class UpdateProviderGeneric(UpdateProvider):
 
     name: str = "generic"
     cmd: list[str] = []
-    # TODO: Document how pattern is used
-    pattern: str = r"^([a-z_\-]+)\s+([0-9\-\.]+)\s+\-\>\s+([0-9\-\.]+)$"
+    pattern: str = r"(?P<name>.+)"  # Match anything to group 'name'
 
     def fetch_updates(self) -> list[PackageUpdate]:
         """Get list of updates from generic shell command."""
-        # TODO: Document change to `shell=False` for generic provider
         available_updates_run = subprocess.run(  # noqa: S603
             self.cmd,
             check=True,
@@ -86,16 +103,6 @@ class UpdateProviderGeneric(UpdateProvider):
             text=True,
             shell=False,
         )
-        available_updates: list[PackageUpdate] = []
-        for line in available_updates_run.stdout.splitlines():
-            match = re.match(self.pattern, line)
-            if not match:
-                return available_updates
-
-            # TODO: Gracefully handle partial pattern matches; Especially the case that only a list of names is provided
-            available_updates.append(
-                PackageUpdate(name=match.group(1), old_version=match.group(2), new_version=match.group(3))
-            )
-        return available_updates
+        return self.parse_updates(available_updates_run.stdout.splitlines(), self.pattern)
 
     model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
