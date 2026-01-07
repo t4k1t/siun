@@ -7,8 +7,15 @@ from unittest import mock
 import pytest
 
 from siun.config import SiunConfig, get_default_thresholds
-from siun.models import CriterionAvailable, CriterionCount, CriterionPattern, V2Threshold
+from siun.models import CriterionAvailable, CriterionCount, CriterionPattern, PackageUpdate, V2Threshold
+from siun.providers import UpdateProviderPacman
 from siun.state import FormatObject, Updates
+
+
+@pytest.fixture(scope="module")
+def default_update_provider():
+    """Provide default update provider."""
+    return UpdateProviderPacman()
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +28,7 @@ def default_thresholds():
 def default_config(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        cmd_available="pacman -Quq; if [ $? == 1 ]; then :; fi",
+        update_provider={"name": "pacman"},
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -38,7 +45,7 @@ def default_config(default_thresholds):
 def config_w_notification(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        cmd_available="pacman -Quq",
+        update_provider={"name": "pacman"},
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -56,7 +63,7 @@ def config_w_notification(default_thresholds):
 def config_w_notification_threshold(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        cmd_available="pacman -Quq",
+        update_provider={"name": "pacman"},
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -74,7 +81,7 @@ def config_w_notification_threshold(default_thresholds):
 def v2_config_w_custom_format(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        cmd_available="pacman -Quq; if [ $? == 1 ]; then :; fi",
+        update_provider={"name": "pacman"},
         cache_min_age_minutes=30,
         v2_thresholds=[V2Threshold(score=1, name="available", text="Updates available")],
         v2_criteria=[
@@ -115,6 +122,19 @@ def notification_mock():
         return notification
 
     return _make
+
+
+@pytest.fixture(scope="module")
+def updates_single():
+    return PackageUpdate(name="siun")
+
+
+@pytest.fixture
+def updates_multiple(count: int = 2):
+    updates = []
+    for i in range(count):
+        updates.append(PackageUpdate(name=f"package_{i}"))
+    return updates
 
 
 @pytest.fixture(scope="module")
