@@ -12,13 +12,7 @@ Check how urgently packages have to be upgraded.
 
 -----
 
-**Table of Contents**
-
-- [Usage](#usage)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [License](#license)
-- [Name](#name)
+[Usage](#usage) • [Installation](#installation) • [Configuration](#configuration) • [License](#license) • [Name](#name)
 
 ## Usage
 
@@ -30,7 +24,7 @@ siun check
 
 Any other OS/distribution will require some [configuration](#configuration) first.
 
-### Check command
+### Check Command
 
 The `check` command runs a configurable console command to find which packages can be updated and checks them against various criteria to determine how urgent it is to apply those updates.
 
@@ -48,7 +42,7 @@ The `check` command supports a few options:
 pip install siun
 ```
 
-### Optional features
+### Optional Features
 
 Some features require additional dependencies to work which will not be installed by default.
 
@@ -83,27 +77,30 @@ See [examples/config.toml](examples/config.toml) for an example config. This exa
 **Important:** Starting with `siun` version **2.0**, the configuration format has changed.  
 If you are upgrading from any version **≤ 1.5.1**, you must update your config file to avoid errors.
 
-### Why the change?
+### Why the Change?
 
 The new format introduces `v2_thresholds` and `v2_criteria` for better flexibility and future-proofing.  
 Old fields (`thresholds`, `criteria`) are no longer supported.
 
-### What changed?
+### What Changed?
 
 - **Old fields:**  
-  - `thresholds` → replaced by `v2_thresholds` (list of objects)
-  - `criteria` → replaced by `v2_criteria` (list of objects)
+  1. `thresholds` → replaced by `v2_thresholds`
+  2. `criteria` → replaced by `v2_criteria`
+  3. `cmd_available` → replaced by `update_provider`
 - **New fields:**  
-  - `v2_thresholds`: List of threshold objects with `name`, `score`, `color`, and `text`
-  - `v2_criteria`: List of criterion objects with `name`, `weight`, and optional parameters
-  - 
-### Migration steps
+  1. `v2_thresholds`: List of threshold objects with `name`, `score`, `color`, and `text`.
+  2. `v2_criteria`: List of criterion objects with `name`, `weight`, and optional parameters.
+  3. `update_provider`: Object describing how to get list of available updates.
+     Update providers make it simpler than ever to set up `siun`. Instead of having to supply the command yourself, just pick an existing provider that does the work for you. E.g. the `pacman` update provider already knows how to get the list of available updates from `pacman` - no additional configuration required.
 
-1. **Backup your old config:**  
+### Migration Steps
+
+1. **Back up your old config:**  
    Copy your existing `config.toml` to a safe location.
 
 2. **Replace old fields:**  
-   Remove any `thresholds` and `criteria` entries.
+   Remove any `thresholds`, `criteria`, and `cmd_available` entries.
 
 3. **Add new fields:**  
    Use the following template:
@@ -115,33 +112,37 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
    score = 3
    color = "red"
    text = "Updates required"
-   
+
    [[v2_thresholds]]
    name = "warning"
    score = 2
    color = "yellow"
    text = "Updates recommended"
-   
+
    [[v2_thresholds]]
    name = "available"
    score = 1
    color = "green"
    text = "Updates available"
-   
+
    # Criteria
    [[v2_criteria]]
    name = "available"
    weight = 1
-   
+
    [[v2_criteria]]
    name = "pattern"
    weight = 1
    pattern = "^archlinux-keyring$|^linux$|^pacman.*$"
-   
+
    [[v2_criteria]]
    name = "count"
    weight = 1
    count = 15
+
+   [update_provider]
+   name = "generic"
+   cmd = ["checkupdates", "--nocolor"]
       ```
 
 4. **Review other config options:**  
@@ -149,6 +150,12 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
 
 5. **Test your setup:**  
    Run `siun check` and verify there are no configuration errors.
+
+### Update Providers
+
+Update providers tell `siun` for which packages updates are available.
+
+> ℹ️ If you can't find a provider for your package manager of choice, you can always try to set up the `generic` provider instead.
 
 ### Troubleshooting
 
@@ -159,7 +166,7 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
 
 *NOTE: If your config is not updated, `siun` 2.0+ will fail to start or revert to defaults.*
 
-### Automatically run `siun check`
+### Automatically Run `siun check`
 
 It is recommended to set up some kind of automation for running `siun`. One possibility is to set up a `systemd` user unit & timer. Find `siun.service` and `siun.timer` in [examples/systemd](examples/systemd) for examples of such.
 
@@ -181,13 +188,13 @@ cmd_available = "checkupdates --nocolor | cut -d ' ' -f1"
 cmd_available = "{ checkupdates --nocolor; aur-check-updates -n --raw; } | cut -d ' ' -f1"
 ```
 
-#### systemd unit & timer
+#### systemd Unit & Timer
 
 Since the default configuration gets the list of available package updates from `pacman` without syncing, it might be useful to define a system unit & timer which automatically updates the local `pacman` database. Find `pacman-sync.service` and `pacman-sync.timer` in [examples/systemd](examples/systemd) for examples of such.
 
 *NOTE: When using the pacman-sync unit it might be tempting to not sync the pacman database on updating packages since the service will sync every day anyway. However, this is a bad idea. See the [Arch Linux Wiki](https://wiki.archlinux.org/title/System_maintenance#Partial_upgrades_are_unsupported) for more information on this. A safer way to make sure package update information is up to date is to use the [`checkupdates`](#checkupdates) script*
 
-### Automatically clear cache
+### Automatically Clear Cache
 
 In order to automatically clear `siun`'s cache when packages get updated, it's possible to set up a pacman hook. Simply edit the `siun-clear-cache.hook` file in the [examples/pacman](examples/pacman) folder to contain the correct `$HOME` path and copy it to `/etc/pacman.d/hooks/`. The example deletes the state cache after `Install`, `Upgrade`, and `Remove` operations.
 
@@ -196,7 +203,7 @@ In order to automatically clear `siun`'s cache when packages get updated, it's p
 
 `siun` checks a configurable list of criteria to determine how urgent updates are. Each criterion is defined in the `[[v2_criteria]]` section of your config file, specifying its type (`name`), parameters, and a `weight` that contributes to the total urgency `score`. The combined score from all matched criteria is then compared against your configured thresholds to determine the update status.
 
-### Built-in criteria
+### Built-in Criteria
 
 The following criteria are built-in:
 - `available`: Any updates are available
@@ -204,7 +211,7 @@ The following criteria are built-in:
 - `pattern`: Any of the available updates is considered an important package based on the configured regex pattern
 - `lastupdate`: Time since last update has exceeded threshold
 
-### Custom criteria
+### Custom Criteria
 
 You can also define your own criteria as Python code. Any python file in `$XDG_CONFIG_DIR/siun/criteria` will be checked for a class called `SiunCriterion` and run its `is_fulfilled` method.
 
@@ -231,7 +238,7 @@ class SiunCriterion:
         return bool(set(available_updates) & set(audit_packages))
 ```
 
-### Custom output format
+### Custom Output Format
 
 It's possible to define your own output format by setting a `custom_format` in the configuration file, and passing `--output-format=custom` to the `siun check` call. See [Configuration](#configuration).
 
