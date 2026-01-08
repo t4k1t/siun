@@ -257,6 +257,8 @@ The following criteria are built-in:
 
 You can also define your own criteria as Python code. Any python file in `$XDG_CONFIG_DIR/siun/criteria` will be checked for a class called `SiunCriterion` and run its `is_fulfilled` method.
 
+> ❗ Custom criteria are loaded and executed as Python code from your local configuration directory. This means that any code placed in `$XDG_CONFIG_DIR/siun/criteria` will be executed with the same privileges as `siun`. Malicious or unsafe code in this directory could compromise your system. Only use custom criteria from trusted sources and review their contents before use.
+
 Example custom criterion checking if any available updates are reported by `arch-audit`:
 
 ```python
@@ -279,6 +281,18 @@ class SiunCriterion:
 
         return bool(set(available_updates) & set(audit_packages))
 ```
+
+#### Security Mitigations
+
+To reduce risks, `siun` implements several safeguards in its code:
+
+- **Explicit Loading:** Only `.py` files whose names match enabled criteria in your configuration are loaded.
+- **Class Verification:** Each file must define a `SiunCriterion` class with an `is_fulfilled` method. Files missing this class or method are ignored.
+- **Error Handling:** If a criterion fails to load or execute, a clear error is raised and reported, preventing silent failures.
+- **No Remote Execution:** Criteria are only loaded from your local configuration directory; there is no remote code fetching.
+- **Permission Checks:** Custom criteria don't get loaded from any world-writable directories.
+
+Despite these measures, custom criteria are inherently powerful and can run arbitrary code. Always audit custom criteria before use.
 
 ### Custom Output Format
 
