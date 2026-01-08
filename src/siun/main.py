@@ -19,6 +19,7 @@ from siun.errors import (
 from siun.formatting import Formatter, OutputFormat
 from siun.models import V2Criterion, V2Threshold
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
+from siun.providers import UpdateProvider
 from siun.state import FormatObject, Updates, load_state, update_state_with_available_packages
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -41,11 +42,11 @@ def _get_updates(
     *,
     no_cache: bool,
     no_update: bool,
-    cmd_available: str,
     criteria: list[V2Criterion],
     thresholds: list[V2Threshold],
     cache_min_age_minutes: int,
     state_file_path: Path,
+    update_provider: UpdateProvider,
 ) -> Updates:
     siun_state = Updates(criteria_settings=criteria, thresholds=thresholds)
 
@@ -53,7 +54,7 @@ def _get_updates(
         if no_update:
             return siun_state
         try:
-            update_state_with_available_packages(siun_state, cmd_available)
+            update_state_with_available_packages(siun_state, update_provider)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         return siun_state
@@ -81,7 +82,7 @@ def _get_updates(
 
     if not existing_state or is_stale:
         try:
-            update_state_with_available_packages(siun_state, cmd_available)
+            update_state_with_available_packages(siun_state, update_provider)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         try:
@@ -160,11 +161,11 @@ def check(*, output_format: OutputFormat, cache: bool, no_update: bool, quiet: b
         siun_state = _get_updates(
             no_cache=not cache,
             no_update=no_update,
-            cmd_available=config.cmd_available,
             criteria=config.v2_criteria,
             thresholds=config.sorted_thresholds,
             cache_min_age_minutes=config.cache_min_age_minutes,
             state_file_path=config.state_file,
+            update_provider=config.update_provider,
         )
     except SiunGetUpdatesError as error:
         raise SiunCLIError(error.message) from error

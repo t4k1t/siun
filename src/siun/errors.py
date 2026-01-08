@@ -6,8 +6,14 @@ from typing import final
 from click import ClickException
 
 
-class CmdRunError(Exception):
-    """Wrap Exception for calls to 3rd party binaries."""
+@final
+class UpdateProviderError(Exception):
+    """Wrap Exception for update provider errors."""
+
+    def __init__(self, message: str, provider_name: str):
+        super().__init__(message)
+        self.message = f"[{provider_name}] {message}"
+        self.provider_name = provider_name
 
 
 @final

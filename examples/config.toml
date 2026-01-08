@@ -1,6 +1,5 @@
 # General settings
-# Command which returns list of available updates
-cmd_available = "pacman -Quq; if [ $? == 1 ]; then :; fi" # pacman returns exit code 1 if there are no updates
+
 # Minimum age of cached update state before it will be refreshed
 cache_min_age_minutes = 30
 # Custom output format - use with `--output-format=custom`
@@ -15,6 +14,10 @@ cache_min_age_minutes = 30
 custom_format = "$status_text: $available_updates"
 # State file location
 state_file = "$XDG_STATE_HOME/siun/state.json"
+
+[update_provider]
+# Available providers: [ pacman | generic ]
+name = "pacman"
 
 [[v2_thresholds]]
 # Unique name

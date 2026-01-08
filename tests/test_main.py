@@ -9,9 +9,9 @@ from unittest import mock
 import pytest
 from click.testing import CliRunner
 
-from siun.errors import CmdRunError, ConfigError, SiunNotificationError
+from siun.errors import ConfigError, SiunNotificationError, UpdateProviderError
 from siun.main import _get_updates, _handle_notification, check
-from siun.models import CriterionAvailable, CriterionCount, CriterionPattern
+from siun.models import CriterionAvailable, CriterionCount, CriterionPattern, PackageUpdate
 from siun.state import Updates
 
 EMPTY_STATE = Updates(
@@ -52,7 +52,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=[])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_no_available_updates_no_cache(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -69,7 +72,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=[])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_with_config_path_option(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -88,7 +94,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=[])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_no_cache_no_update_options(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -105,7 +114,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=[])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_quiet_option(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -122,7 +134,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=[])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_no_updates(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -140,7 +155,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates")
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[],
+    )
     @mock.patch("siun.main.get_config", side_effect=ConfigError("failed", config_path=Path("/path/to/siun.toml")))
     def test_check_invalid_config(
         self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
@@ -157,7 +175,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[PackageUpdate(name="package")],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_stale_state(
         self,
@@ -181,7 +202,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates", side_effect=CmdRunError("Fuuu"))
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        side_effect=UpdateProviderError("Permission denied", "pacman"),
+    )
     @mock.patch("siun.main.get_config")
     def test_check_with_error_onfetch_available_updates(
         self,
@@ -202,11 +226,14 @@ class TestMain:
         mockfetch_available_updates.assert_called_once()
         assert result.exit_code == 1
         assert result.stdout == ""
-        assert result.stderr == "Error: failed to query available updates: Fuuu\n"
+        assert result.stderr == "Error: failed to query available updates: Permission denied\n"
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[PackageUpdate(name="package")],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_with_custom_output_format(
         self,
@@ -230,7 +257,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state", return_value=False)
-    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[PackageUpdate(name="package")],
+    )
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
     def test_custom_state_file_path_config(
         self, mock_read_config, mockfetch_available_updates, mock_read_state, mock_persist_state
@@ -266,7 +296,7 @@ class TestMain:
             no_update=True,
             criteria=[],
             thresholds=[],
-            cmd_available="",
+            update_provider="dummy",
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
         )
@@ -291,7 +321,7 @@ class TestMain:
             state="OK",
             thresholds=[],
             matched_criteria={},
-            available_updates=["siun"],
+            available_updates=[{"name": "siun"}],
             criteria_settings=[],
         )
         mock_read_state.return_value = existing_state
@@ -300,17 +330,20 @@ class TestMain:
             no_update=True,
             criteria=config_criteria,
             thresholds=[],
-            cmd_available="",
+            update_provider="dummy",
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
         )
         mock__update_state.assert_not_called()
         mock_read_state.assert_called_once()
         mock_persist_state.assert_not_called()
-        assert result.available_updates == ["siun"]
+        assert result.available_updates == [PackageUpdate(name="siun")]
 
     @mock.patch("siun.main.INSTALLED_FEATURES", [])
-    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[PackageUpdate(name="package")],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_notification_wo_feature(self, mock_get_config, mockfetch_available_updates, config_w_notification):
         """Test check CLI command with missing notification feature."""
@@ -323,7 +356,10 @@ class TestMain:
 
     @pytest.mark.feature_notification
     @mock.patch("siun.notification.UpdateNotification.show")
-    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[PackageUpdate(name="package")],
+    )
     @mock.patch("siun.main.get_config")
     def test_check_notification(self, mock_get_config, mockfetch_available_updates, mock_show, config_w_notification):
         """Test check CLI command with notification."""
@@ -336,7 +372,7 @@ class TestMain:
         assert result.output == "Updates available\n"
 
     @mock.patch("siun.main.Updates.persist_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=["package"])
+    @mock.patch("siun.providers.UpdateProviderPacman.fetch_updates", return_value=[PackageUpdate(name="siun")])
     @mock.patch("siun.main.load_state")
     @mock.patch("siun.notification.UpdateNotification.show")
     @mock.patch("siun.main.get_config")
@@ -362,7 +398,10 @@ class TestMain:
 
     @pytest.mark.feature_notification
     @mock.patch("siun.main.Updates.persist_state")
-    @mock.patch("siun.state.fetch_available_updates", return_value=["package", "other_package"])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[PackageUpdate(name="package"), PackageUpdate(name="other_package")],
+    )
     @mock.patch("siun.main.load_state")
     @mock.patch("siun.notification.UpdateNotification.show")
     @mock.patch("siun.main.get_config")
@@ -422,13 +461,13 @@ class TestMain:
     @mock.patch("siun.main.load_state")
     @mock.patch("siun.main.update_state_with_available_packages", return_value=None)
     def test_existing_state_sets_required_fields(
-        self, mock_update_state, mock_load_state, mock_persist_state, v2_config_w_custom_format
+        self, mock_update_state, mock_load_state, mock_persist_state, v2_config_w_custom_format, updates_single
     ):
         """Test loaded state receives required values from config."""
         loaded_state = Updates(
             criteria_settings=[],
             thresholds=[],
-            available_updates=["package"],
+            available_updates=[updates_single],
             matched_criteria={},
             last_update=datetime.datetime.now(tz=datetime.UTC),
         )
@@ -442,7 +481,7 @@ class TestMain:
         result = _get_updates(
             no_cache=False,
             no_update=True,
-            cmd_available="dummy",
+            update_provider="dummy",
             criteria=config_criteria,
             thresholds=v2_config_w_custom_format.v2_thresholds,
             cache_min_age_minutes=10,
@@ -451,7 +490,7 @@ class TestMain:
 
         assert result.criteria_settings == config_criteria
         assert result.thresholds == v2_config_w_custom_format.v2_thresholds
-        assert result.available_updates == ["package"]
+        assert result.available_updates == [updates_single]
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
@@ -481,7 +520,7 @@ class TestMain:
             _get_updates(
                 no_cache=False,
                 no_update=False,
-                cmd_available="dummy",
+                update_provider="dummy",
                 criteria=[],
                 thresholds=[threshold1, threshold2],
                 cache_min_age_minutes=10,
@@ -517,7 +556,7 @@ class TestMain:
             _get_updates(
                 no_cache=False,
                 no_update=False,
-                cmd_available="dummy",
+                update_provider="dummy",
                 criteria=[],
                 thresholds=[threshold],
                 cache_min_age_minutes=10,
