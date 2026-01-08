@@ -9,7 +9,7 @@ from unittest import mock
 import pytest
 from click.testing import CliRunner
 
-from siun.errors import CmdRunError, ConfigError, SiunNotificationError
+from siun.errors import ConfigError, SiunNotificationError, UpdateProviderError
 from siun.main import _get_updates, _handle_notification, check
 from siun.models import CriterionAvailable, CriterionCount, CriterionPattern, PackageUpdate
 from siun.state import Updates
@@ -202,7 +202,10 @@ class TestMain:
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
-    @mock.patch("siun.providers.UpdateProviderPacman.fetch_updates", side_effect=CmdRunError("Fuuu"))
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        side_effect=UpdateProviderError("Permission denied", "pacman"),
+    )
     @mock.patch("siun.main.get_config")
     def test_check_with_error_onfetch_available_updates(
         self,
@@ -223,7 +226,7 @@ class TestMain:
         mockfetch_available_updates.assert_called_once()
         assert result.exit_code == 1
         assert result.stdout == ""
-        assert result.stderr == "Error: failed to query available updates: Fuuu\n"
+        assert result.stderr == "Error: failed to query available updates: Permission denied\n"
 
     @mock.patch("siun.main.Updates.persist_state")
     @mock.patch("siun.main.load_state")
