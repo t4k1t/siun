@@ -60,7 +60,7 @@ The `notification` feature shows a desktop notification the first time a configu
 
 ```bash
 # Set up dev env
-uv sync
+uv sync --all-extras
 ```
 
 ## Configuration
@@ -140,22 +140,64 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
    weight = 1
    count = 15
 
+   # Update provider
    [update_provider]
    name = "generic"
    cmd = ["checkupdates", "--nocolor"]
       ```
 
 4. **Review other config options:**  
-   Ensure any custom settings (e.g., `cmd_available`, `custom_format`, `notification`) are still valid.
+   Ensure any custom settings (e.g., `custom_format`, `notification`) are still valid.
 
 5. **Test your setup:**  
    Run `siun check` and verify there are no configuration errors.
 
 ### Update Providers
 
-Update providers tell `siun` for which packages updates are available.
+Update providers tell `siun` how to fetch the list of packages with available updates. This is configured using the `[update_provider]` section in your `config.toml`.
 
 > ℹ️ If you can't find a provider for your package manager of choice, you can always try to set up the `generic` provider instead.
+
+#### Default Provider: pacman
+
+By default, `siun` is configured to use the `pacman` update provider. This provider automatically runs `pacman -Qu` and parses its output, so no extra configuration is needed for most Arch Linux systems. If you use Arch or a compatible distribution, you can simply install and run `siun` without changing the provider.
+
+Example default configuration:
+```toml
+[update_provider]
+name = "pacman"
+```
+
+#### Custom Provider: generic
+
+If you use a different package manager, or want to customize how updates are detected, you can use the `generic` provider. This lets you specify any shell command that outputs a list of updatable packages, one per line. The `generic` provider will treat each line as a package name.
+
+Example configuration for the generic provider:
+```toml
+[update_provider]
+name = "generic"
+cmd = ["your-update-command", "--flag", "--another-flag"]
+pattern = "(?P<name>.+)"
+```
+- `cmd`: List of command and arguments to run. Each line of output should be a package name.
+- `pattern`: (Optional) Regex pattern to extract the package name. By default, it matches the whole line. The `generic` provider looks for the following match groups: `name`, `old_version`, `new_version`. The `name` group is required, all others are optional.
+
+For example, to use the `checkupdates` script (from `pacman-contrib`), configure:
+```toml
+[update_provider]
+name = "generic"
+cmd = ["checkupdates", "--nocolor"]
+pattern = "(?P<name>.+)"
+```
+
+If your update command outputs more details (like version numbers), you can adjust the `pattern` to extract those fields. See the [examples/config.toml](examples/config.toml) for more advanced patterns.
+
+#### Choosing a Provider
+
+- **Arch Linux users:** The `pacman` provider is recommended and enabled by default.
+- **Other distributions:** Use the `generic` provider and set `cmd` to your update command.
+
+After configuring, run `siun check` to verify your setup.
 
 ### Troubleshooting
 
