@@ -20,7 +20,7 @@ from siun.models import (
     V2Threshold,
 )
 from siun.notification import UpdateNotification
-from siun.providers import UPDATE_PROVIDER_REGISTRY, UpdateProvider
+from siun.providers import UPDATE_PROVIDER_REGISTRY, UpdateProvider, UpdateProviderPacman
 from siun.util import get_default_config_dir, get_default_state_path
 
 
@@ -44,7 +44,7 @@ def get_default_criteria() -> list[V2Criterion]:
 
 def get_default_update_provider() -> UpdateProvider:
     """Get default update provider."""
-    return UpdateProvider(name="pacman")
+    return UpdateProviderPacman()
 
 
 class SiunConfig(BaseModel):

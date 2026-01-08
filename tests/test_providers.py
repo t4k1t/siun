@@ -64,26 +64,28 @@ class TestUpdateProviderPacman:
 
         def callback_func(process):
             process.returncode = 2
-            raise PermissionError("no")  # noqa: EM101
+            raise PermissionError("Permission denied")  # noqa: EM101
 
         fp.register([":"], callback=callback_func)
 
         provider = UpdateProviderPacman(cmd=[":"])
-        with pytest.raises(PermissionError):
+        with pytest.raises(UpdateProviderError) as excinfo:
             provider.fetch_updates()
+        assert "Permission denied" in str(excinfo.value)
 
     def test_fetch_updates_cmd_not_found(self, fp):
         """Test fetch_updates with cmd not found."""
 
         def callback_func(process):
             process.returncode = 2
-            raise FileNotFoundError("no")  # noqa: EM101
+            raise FileNotFoundError("command not found")  # noqa: EM101
 
         fp.register([":"], callback=callback_func)
 
         provider = UpdateProviderPacman(cmd=[":"])
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(UpdateProviderError) as excinfo:
             provider.fetch_updates()
+        assert "command not found" in str(excinfo.value)
 
     def test_fetch_updates_invalid_cmd(self, fp):
         """Test fetch_updates with invalid cmd."""

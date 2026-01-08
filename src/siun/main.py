@@ -3,7 +3,6 @@
 """siun - Know how urgently your system needs to be updated."""
 
 import datetime
-import logging
 from pathlib import Path
 
 import click
@@ -23,11 +22,8 @@ from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATU
 from siun.providers import UpdateProvider
 from siun.state import FormatObject, Updates, load_state, update_state_with_available_packages
 
-LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES
-
-logger = logging.getLogger("siun")
 
 
 def get_formatted_state_text(format_object: FormatObject, output_format: OutputFormat, custom_format: str) -> str:
@@ -130,7 +126,7 @@ def _handle_notification(config: SiunConfig, siun_state: Updates) -> None:
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(__version__)
 def cli():  # noqa: D103 # pragma: no cover
-    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
+    pass
 
 
 @cli.command()

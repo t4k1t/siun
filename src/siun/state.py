@@ -2,8 +2,8 @@
 
 import datetime
 import importlib.util
-import logging
 import shutil
+import stat
 import tempfile
 import traceback
 from importlib.machinery import SourceFileLoader
@@ -14,9 +14,9 @@ from pydantic import BaseModel, Field
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionPattern, SiunCriterion
 from siun.errors import (
-    CmdRunError,
     CriterionError,
     SiunStateUpdateError,
+    UpdateProviderError,
 )
 from siun.models import ClickColor, PackageUpdate, V2Criterion, V2Threshold
 from siun.providers import UpdateProvider
@@ -29,20 +29,19 @@ BUILTIN_CRITERIA = {
 }
 EXPECTED_CLASS = "SiunCriterion"
 
-logger = logging.getLogger("siun")
-
 
 def load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Path | None = None) -> dict[str, Any]:
     """Load user criteria."""
-    # TODO: Only load from trusted dir, unless validated (how to validate? permisissions? what else?)
-    # TODO: Try running code in subprocess with restricted permissions
-    # TODO: Document risks
     user_criteria: dict[str, SiunCriterion] = {}
     if not include_path:
         include_path = get_default_criteria_dir()
 
     if not include_path.exists() or not include_path.is_dir():
         return user_criteria
+
+    if bool(include_path.stat().st_mode & stat.S_IWOTH):
+        message = f"Criteria directory '{include_path}' is world-writable"
+        raise ImportError(message)
 
     # Get list of enabled user criteria from config
     enabled_criteria = {criterion.name for criterion in criteria_settings if criterion.weight != 0}
@@ -62,22 +61,8 @@ def load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Pa
         if hasattr(py_mod, EXPECTED_CLASS):
             class_obj = getattr(py_mod, EXPECTED_CLASS)
             # Check inheritance
-            if not issubclass(class_obj, SiunCriterion):
-                # TODO: Test/Try
-                logger.debug(
-                    "[%s] Skipping '%s': Does not contain subclass of SiunCriterion",
-                    load_user_criteria.__name__,
-                    file_path,
-                )
-                continue
             if not hasattr(class_obj, "is_fulfilled") or not callable(class_obj.is_fulfilled):
-                # TODO: Test/Try
-                logger.debug(
-                    "[%s] Skipping '%s': Missing 'is_fulfilled' method",
-                    load_user_criteria.__name__,
-                    file_path,
-                )
-                continue
+                continue  # An error is raised later if any configured criteria could not be loaded
             class_inst = py_mod.SiunCriterion()
             user_criteria[file_path.stem] = class_inst
 
@@ -241,7 +226,7 @@ def update_state_with_available_packages(siun_state: Updates, update_provider: U
     """Fetch available package updates and (re-)evaluate update state."""
     try:
         siun_state.evaluate(available_updates=update_provider.fetch_updates())
-    except CmdRunError as error:
+    except UpdateProviderError as error:
         message = f"failed to query available updates: {error}"
         raise SiunStateUpdateError(message) from error
     except CriterionError as error:

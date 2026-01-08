@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-import logging
 import re
 import subprocess
 
 from pydantic import BaseModel, ConfigDict
 
+from siun.errors import UpdateProviderError
 from siun.models import PackageUpdate
 
 UPDATE_PROVIDER_REGISTRY: dict[str, type[UpdateProvider]] = {}
-# TODO: Document how pattern is used
 PACMAN_PATTERN: str = (
     r"^(?P<name>[_\-0-9a-z]+)\s+(?P<old_version>[\-\.\:0-9a-z]+)\s+\-\>\s+(?P<new_version>[\-\.\:0-9a-z]+)$"
 )
-
-logger = logging.getLogger("siun")
 
 
 class UpdateProvider(BaseModel):
@@ -34,8 +31,8 @@ class UpdateProvider(BaseModel):
         for line in lines:
             match = re.match(pattern, line)
             if not match or "name" not in match.groupdict():
-                logger.warning("[%s update provider] failed to parse output: %s", self.name, line)
-                continue
+                message = f"failed to parse output: {line}"
+                raise UpdateProviderError(message, self.name)
 
             match_dict = match.groupdict()
             available_updates.append(
@@ -59,8 +56,6 @@ class UpdateProvider(BaseModel):
 class UpdateProviderPacman(UpdateProvider):
     """Update provider for pacman."""
 
-    # TODO: `check_aur`
-    # TODO: Optional smart detection
     name: str = "pacman"
     cmd: list[str] = ["pacman", "-Qu"]
     pattern: str = PACMAN_PATTERN
@@ -81,6 +76,9 @@ class UpdateProviderPacman(UpdateProvider):
             if error.returncode == 1:
                 # When no updates are available, pacman returns exit code 1
                 return []
+        except Exception as error:
+            message = f"unexpected error: {error}"
+            raise UpdateProviderError(message, self.name) from error
 
         return []
 
@@ -96,13 +94,17 @@ class UpdateProviderGeneric(UpdateProvider):
 
     def fetch_updates(self) -> list[PackageUpdate]:
         """Get list of updates from generic shell command."""
-        available_updates_run = subprocess.run(  # noqa: S603
-            self.cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=False,
-        )
-        return self.parse_updates(available_updates_run.stdout.splitlines(), self.pattern)
+        try:
+            available_updates_run = subprocess.run(  # noqa: S603
+                self.cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                shell=False,
+            )
+            return self.parse_updates(available_updates_run.stdout.splitlines(), self.pattern)
+        except Exception as error:
+            message = f"unexpected error: {error}"
+            raise UpdateProviderError(message, self.name) from error
 
     model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]

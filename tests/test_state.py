@@ -1,6 +1,7 @@
 """Test state module."""
 
 import io
+import stat
 from os import environ
 from pathlib import Path
 from unittest import mock
@@ -217,3 +218,24 @@ class TestCustomCriteria:
         with mock.patch.dict(environ, clear=True):
             environ["HOME"] = "/tmp/siun-tests/no_config_home"  # noqa: S108
             assert get_default_criteria_dir() == Path("/tmp/siun-tests/no_config_home/.config/siun/criteria")  # noqa: S108
+
+    def test_load_user_criteria_world_writable_dir(self, tmp_path):
+        """Test load_user_criteria exception if criteria dir is world-writable."""
+        criteria_settings = [CriterionCustom(name="test_criterion", weight=1)]
+        include_path = tmp_path / "criteria"
+        include_path.mkdir()
+        assert include_path.exists()
+        assert include_path.is_dir()
+
+        with mock.patch("pathlib.Path.stat") as mock_stat:
+
+            class DummyStat:
+                # Mock st_mode to be world-writable and a directory
+                st_mode = stat.S_IWOTH | stat.S_IFDIR
+
+            mock_stat.return_value = DummyStat()
+            assert include_path.exists()
+            assert include_path.is_dir()
+            with pytest.raises(ImportError) as excinfo:
+                load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
+            assert "world-writable" in str(excinfo.value)
