@@ -12,7 +12,7 @@ from siun.models import PackageUpdate
 
 UPDATE_PROVIDER_REGISTRY: dict[str, type[UpdateProvider]] = {}
 PACMAN_PATTERN: str = (
-    r"^(?P<name>[_\-0-9a-z]+)\s+(?P<old_version>[\-\.\:0-9a-z]+)\s+\-\>\s+(?P<new_version>[\-\.\:0-9a-z]+)$"
+    r"^(?P<name>[\+_\-\.0-9a-z]+)\s+(?P<old_version>[\+_\-\.\:0-9a-z]+)\s+\-\>\s+(?P<new_version>[\+_\-\.\:0-9a-z\+]+)$"
 )
 
 
