@@ -1,7 +1,7 @@
 [project]
 name = "siun"
 version = "1.5.1"
-description = 'Report urgency of package upgrades'
+description = 'Prioritize package updates that matter.'
 authors = [{ name = "Thomas Kager", email = "t4k1t+dev@protonmail.com" }]
 requires-python = ">= 3.11"
 dependencies = ["click>=8.1", "pydantic>=2.7"]
@@ -28,6 +28,7 @@ Source = "https://github.com/t4k1t/siun"
 
 [project.optional-dependencies]
 notification = ["dbus-python>=1.4.0"]
+news = ["feedparser>=6.0.12"]
 
 [build-system]
 requires = ["hatchling"]
@@ -98,7 +99,8 @@ reportUnusedCallResult = false
 
 [tool.pytest.ini_options]
 markers = [
-  "feature_notification: test which require the optional 'notification' feature",
+  "feature_notification: tests which require the optional 'notification' feature",
+  "feature_news: tests which require the optional 'news' feature",
 ]
 
 [tool.coverage.run]

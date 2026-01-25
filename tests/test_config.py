@@ -16,8 +16,8 @@ CONFIG_MISSING_WEIGHTS = """
 name = "custom"
 """
 
-CONFIG_CUSTOM_STATE_FILE_PATH = """
-state_file = "/tmp/siun-test-state.json"
+CONFIG_CUSTOM_STATE_DIR = """
+state_dir = "/tmp/siun-test-state"
 """
 
 CONFIG_LEGACY_THRESHOLDS = """
@@ -97,6 +97,13 @@ count = 15
 threshold = "non-existent-threshold"
 """
 
+CONFIG_W_NEWS = """
+[[news]]
+url = "https://pypi.org/rss/project/siun/releases.xml"
+title = "Test Title"
+max_items = 1
+"""
+
 # Override `$HOME` for consistent tests
 environ["HOME"] = "/tmp/siun-tests"  # noqa: S108
 
@@ -130,13 +137,13 @@ class TestConfig:
         mock_read_config.assert_called_once()
         assert "'v2_criteria.0.weight': Field required" in str(exc_info.value)
 
-    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
-    def test_custom_state_file_path(self, mock_read_config, default_config):
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_DIR))
+    def test_custom_state_dir(self, mock_read_config, default_config):
         """Test custom state file path."""
         with mock.patch("siun.config.get_default_config_dir"):
             config = get_config()
         assert config != default_config
-        assert config.state_file == Path("/tmp/siun-test-state.json")  # noqa: S108
+        assert config.state_dir == Path("/tmp/siun-test-state")  # noqa: S108
 
         mock_read_config.assert_called_once()
 
@@ -160,7 +167,7 @@ class TestConfig:
             environ["XDG_STATE_HOME"] = "/tmp/siun-tests/state"  # noqa: S108
             config = get_config()
 
-        assert config.state_file == Path("/tmp/siun-tests/state/siun/state.json")  # noqa: S108
+        assert config.state_dir == Path("/tmp/siun-tests/state/siun")  # noqa: S108
 
     @mock.patch("siun.config._read_config", side_effect=OSError)
     def test_os_error(self, default_config):
@@ -177,6 +184,21 @@ class TestConfig:
             get_config()
 
         assert "config file not valid" in str(exc_info.value)
+
+    @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_W_NEWS))
+    def test_config_with_news_source(self, default_config):
+        """Test config with news source."""
+        with (
+            mock.patch("pathlib.Path.exists", return_value=True),
+            mock.patch("pathlib.Path.is_file", return_value=True),
+        ):
+            config = get_config()
+
+        assert len(config.news) == 1
+        news_source = config.news[0]
+        assert news_source.url == "https://pypi.org/rss/project/siun/releases.xml"
+        assert news_source.title == "Test Title"
+        assert news_source.max_items == 1
 
 
 class TestThresholdsConfig:

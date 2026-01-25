@@ -2,9 +2,7 @@
 
 import datetime
 import importlib.util
-import shutil
 import stat
-import tempfile
 import traceback
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
@@ -20,7 +18,7 @@ from siun.errors import (
 )
 from siun.models import ClickColor, PackageUpdate, V2Criterion, V2Threshold
 from siun.providers import UpdateProvider
-from siun.util import get_default_criteria_dir
+from siun.util import get_default_criteria_dir, safely_write_to_disk
 
 BUILTIN_CRITERIA = {
     "available": CriterionAvailable(),
@@ -195,22 +193,11 @@ class Updates(BaseModel):
             self.match = None
 
     def persist_state(self, state_file_path: Path) -> None:
-        """
-        Write state to disk.
-
-        Avoids partially written state file (and therefore invalid JSON) by
-        creating a temporary file first and only replacing the state file once
-        the writing operation is done.
-        """
-        if not Path.exists(state_file_path.parent):
-            # Create parent dir for state file path if it doesn't exist
-            Path.mkdir(Path(state_file_path.parent))
-        with tempfile.NamedTemporaryFile(mode="w+") as update_file:
-            update_file.write(
-                self.model_dump_json(exclude={"thresholds", "last_match", "matched_criteria", "criteria_settings"})
-            )
-            update_file.flush()
-            shutil.copy(update_file.name, state_file_path)
+        """Write state to disk."""
+        return safely_write_to_disk(
+            content=self.model_dump_json(exclude={"thresholds", "last_match", "matched_criteria", "criteria_settings"}),
+            target_path=state_file_path,
+        )
 
 
 def load_state(state_file_path: Path) -> Updates | None:

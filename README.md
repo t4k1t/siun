@@ -6,9 +6,9 @@
 
 <img height="128" alt="siun Icon" src="assets/icon/siun-icon.png" align="left">
 
-Check how urgently packages have to be upgraded.
+Prioritize package updates that matter.
 
-`siun` will check available updates for various criteria - like the number of updates, or important package names. Each criterion will count towards a total score which gives an indication of how urgently upgrades are required. You can also write your own criteria using Python.
+By calculating an urgency score, `siun` aims to help sysadmins decide how important available updates really are and why. It supports various built-in criteria and allows users to implement their own criteria in Python.
 
 -----
 
@@ -251,7 +251,6 @@ The following criteria are built-in:
 - `available`: Any updates are available
 - `count`: Number of available updates exceeds threshold
 - `pattern`: Any of the available updates is considered an important package based on the configured regex pattern
-- `lastupdate`: Time since last update has exceeded threshold
 
 ### Custom Criteria
 

@@ -1,6 +1,5 @@
 """Config module."""
 
-import shutil
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as toml_load
@@ -16,12 +15,13 @@ from siun.models import (
     CriterionCount,
     CriterionCustom,
     CriterionPattern,
+    NewsProvider,
     V2Criterion,
     V2Threshold,
 )
 from siun.notification import UpdateNotification
 from siun.providers import UPDATE_PROVIDER_REGISTRY, UpdateProvider, UpdateProviderPacman
-from siun.util import get_default_config_dir, get_default_state_path
+from siun.util import get_default_config_dir, get_default_state_dir
 
 
 def get_default_thresholds() -> list[V2Threshold]:
@@ -55,8 +55,9 @@ class SiunConfig(BaseModel):
     v2_thresholds: list[V2Threshold] = Field(default_factory=get_default_thresholds)
     v2_criteria: list[V2Criterion] = Field(default_factory=get_default_criteria)
     custom_format: str = Field(default="$status_text: $available_updates")
-    state_file: Path = Field(default_factory=get_default_state_path)
+    state_dir: Path = Field(default_factory=get_default_state_dir)
     notification: UpdateNotification | None = Field(default=None)
+    news: list[NewsProvider] = Field(default=[])
 
     @computed_field
     @property
@@ -84,6 +85,7 @@ class SiunConfig(BaseModel):
         has_thresholds = "thresholds" in data
         has_criteria = "criteria" in data
         has_cmd_available = "cmd_available" in data
+        has_state_file = "state_file" in data
         if not has_thresholds and not has_criteria and not has_cmd_available:
             return data  # pyright: ignore[reportUnknownVariableType]
 
@@ -94,6 +96,8 @@ class SiunConfig(BaseModel):
             message_parts.append("- 'criteria' have been deprecated in favour of 'v2_criteria'")
         if has_cmd_available:
             message_parts.append("- 'cmd_available' has been deprecated in favour of 'update_provider'")
+        if has_state_file:
+            message_parts.append("- 'state_file' has been deprecated in favour of 'state_dir'")
 
         raise ValueError("\n".join(message_parts))
 
@@ -145,12 +149,6 @@ def _read_config(config_path: Path) -> dict[str, Any]:  # pragma: no cover
         return toml_load(file_obj)
 
 
-def _migrate_legacy_config(config_path: Path):
-    legacy_config_path = Path().home() / ".config" / "siun.toml"
-    if not config_path.exists() and legacy_config_path.exists() and legacy_config_path.is_file():
-        shutil.copy2(legacy_config_path, config_path)
-
-
 def _format_error_loc(err_loc: tuple[int | str, ...]):
     if err_loc:
         return f"'{'.'.join(str(loc) for loc in err_loc)}': "
@@ -165,7 +163,7 @@ def get_config(config_path: Path | None = None) -> SiunConfig:
     """Get config from defaults and user supplied values."""
     if config_path is None:
         config_path = get_default_config_dir() / Path("config.toml")
-    _migrate_legacy_config(config_path)
+
     config_dict: dict[str, Any] = {}
     if config_path.exists() and config_path.is_file():
         try:

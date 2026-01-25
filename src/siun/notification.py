@@ -44,8 +44,8 @@ class UpdateNotification(BaseModel):
     icon: str = Field(default="siun-icon")
     title: str = Field(default="$status_text")
     message: str = Field(default="$available_updates")
-    actions: list = []  # pyright: ignore[reportMissingTypeArgument,reportUnknownVariableType]
-    hints: dict = {}  # pyright: ignore[reportMissingTypeArgument,reportUnknownVariableType]
+    actions: list = []  # pyright: ignore[reportMissingTypeArgument, reportUnknownVariableType]
+    hints: dict = {}  # pyright: ignore[reportMissingTypeArgument, reportUnknownVariableType]
     timeout: int = Field(default=5000)
     urgency: NotificationUrgency | None = None
     threshold: str  # NOTE: This field gets validated in the Config model

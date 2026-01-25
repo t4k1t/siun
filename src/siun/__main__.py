@@ -1,5 +1,4 @@
-import sys
+from siun.cli import cli  # noqa: F401
 
-import siun
-
-sys.exit(siun.main())
+if __name__ == "__main__":
+    cli()
