@@ -99,8 +99,8 @@ reportUnusedCallResult = false
 
 [tool.pytest.ini_options]
 markers = [
-  "feature_notification: test which require the optional 'notification' feature",
-  "feature_news: test which require the optional 'news' feature",
+  "feature_notification: tests which require the optional 'notification' feature",
+  "feature_news: tests which require the optional 'news' feature",
 ]
 
 [tool.coverage.run]
