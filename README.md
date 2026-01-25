@@ -251,7 +251,6 @@ The following criteria are built-in:
 - `available`: Any updates are available
 - `count`: Number of available updates exceeds threshold
 - `pattern`: Any of the available updates is considered an important package based on the configured regex pattern
-- `lastupdate`: Time since last update has exceeded threshold
 
 ### Custom Criteria
 
