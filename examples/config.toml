@@ -2,7 +2,9 @@
 
 # Minimum age of cached update state before it will be refreshed
 cache_min_age_minutes = 30
+
 # Custom output format - use with `--output-format=custom`
+custom_format = "$status_text: $available_updates"
 # Available variables for custom_format:
 #     - $available_updates:      Comma-separated list of available updates
 #     - $last_update:            Date and time of last time siun checked for updates in ISO format
@@ -11,23 +13,30 @@ cache_min_age_minutes = 30
 #     - $score:                  Sum weight of matched criteria
 #     - $status_text:            Text representation of update status, e.g. "Updates available"
 #     - $update_count:           Number of available updates
-custom_format = "$status_text: $available_updates"
-# State file location
-state_file = "$XDG_STATE_HOME/siun/state.json"
 
+# State file location
+state_dir = "$XDG_STATE_HOME/siun"
+
+# Provider of available updates
 [update_provider]
 # Available providers: [ pacman | generic ]
 name = "pacman"
 
+[[news]]
+url = "https://pypi.org/rss/project/siun/releases.xml"
+max_items = 2                                          # Optional; defaults to 3
+
+[[news]]
+url = "https://archlinux.org/feeds/news"
+title = "Totally not Arch Linux News"    # Optional; defaults to feed title
+max_items = 1
+
+
 [[v2_thresholds]]
-# Unique name
-name = "critical"
-# Minimum sum of criteria weights to consider this threshold exceeded
-score = 3
-# Color for `fancy` output format; optional
-color = "red"
-# Custom text for output
-text = "Updates required"
+name = "critical"         # Unique name
+score = 3                 # Minimum sum of criteria weights to consider this threshold exceeded
+color = "red"             # Color for `fancy` output format; optional
+text = "Updates required" # Custom text for output
 
 [[v2_thresholds]]
 name = "warning"
@@ -43,30 +52,24 @@ text = "Updates available"
 
 # Settings for check criteria - these will determine the urgency of your package updates
 [[v2_criteria]]
-name = "available"
-weight = 1
-
-[[v2_criteria]]
-name = "pattern"
-weight = 1
-pattern = "^archlinux-keyring$|^linux$|^pacman.*$"
+name = "pattern"                                   # Criterion name - the same criterion can be configured multiple times
+weight = 1                                         # Weight of criterion contributing to urgency score
+pattern = "^archlinux-keyring$|^linux$|^pacman.*$" # Regex, count towards urgency score if matched
 
 [[v2_criteria]]
 name = "count"
 weight = 1
-count = 15
+count = 15     # Number of updates required to count towards urgency score
+
+[[v2_criteria]]
+name = "available"
+weight = 0         # Setting the weight to 0 bypasses the criterion check
 
 # Settings for desktop notification
 [notification]
-# Notification body, supports the same format placeholders as the `custom_format` setting
-message = "$available_updates"
-# Notification title, supports the same format placeholders as the `custom_format` setting
-title = "$status_text"
-# Notification urgency ["low"|"normal"|"critical"]
-urgency = "normal"
-# Notification timeout, `0` means no timeout
-timeout = 10000
-# Notification icon, can be either icon name or path
-icon = "siun-icon"
-# Minimum threshold for notification to show ["available"|"warning"|"critical"]
-threshold = "available"
+message = "$available_updates" # Notification body, supports the same format placeholders as the `custom_format` setting
+title = "$status_text"         # Notification title, supports the same format placeholders as the `custom_format` setting
+urgency = "normal"             # Notification urgency ["low"|"normal"|"critical"]
+timeout = 10000                # Notification timeout, `0` means no timeout
+icon = "siun-icon"             # Notification icon, can be either icon name or path
+threshold = "available"        # Minimum threshold for notification to show ["available"|"warning"|"critical"]

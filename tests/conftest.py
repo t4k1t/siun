@@ -37,7 +37,8 @@ def default_config(default_thresholds):
             CriterionCount(name="count", weight=1, count=15),
         ],
         custom_format="$status_text: $available_updates",
-        state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
+        state_dir=Path("/tmp/siun-tests/.local/state/siun"),  # noqa: S108
+        news=[],
     )
 
 
@@ -54,7 +55,7 @@ def config_w_notification(default_thresholds):
             CriterionCount(name="count", weight=1, count=2),
         ],
         custom_format="$status_text: $available_updates",
-        state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
+        state_dir=Path("/tmp/siun-tests/.local/state/siun"),  # noqa: S108
         notification={"title": "siun test notification", "threshold": "available"},
     )
 
@@ -72,7 +73,7 @@ def config_w_notification_threshold(default_thresholds):
             CriterionCount(name="count", weight=1, count=2),
         ],
         custom_format="$status_text: $available_updates",
-        state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
+        state_dir=Path("/tmp/siun-tests/.local/state/siun"),  # noqa: S108
         notification={"title": "siun test notification", "threshold": "warning"},
     )
 
@@ -90,7 +91,7 @@ def v2_config_w_custom_format(default_thresholds):
             CriterionPattern(name="pattern", weight=1, pattern="^archlinux-keyring$|^linux$|^pacman.*$"),
         ],
         custom_format="$status_text: $available_updates",
-        state_file=Path("/tmp/siun-tests/.local/state/siun/state.json"),  # noqa: S108
+        state_dir=Path("/tmp/siun-tests/.local/state/siun"),  # noqa: S108
     )
 
 
