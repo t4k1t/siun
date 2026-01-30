@@ -1,6 +1,7 @@
 """Common utils."""
 
 import shutil
+import stat
 import tempfile
 from os import environ
 from pathlib import Path
@@ -55,3 +56,8 @@ def safely_write_to_disk(*, content: str, target_path: Path) -> None:
         update_file.write(content)
         update_file.flush()
         shutil.copy(update_file.name, target_path)
+
+
+def is_path_world_writable(path: Path) -> bool:
+    """Check if a given path is world-writable."""
+    return bool(path.stat().st_mode & stat.S_IWOTH)

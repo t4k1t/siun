@@ -222,3 +222,10 @@ def format_object_factory():
         return FormatObject(**defaults)
 
     return _make
+
+
+@pytest.fixture(autouse=True, scope="class")
+def patch_is_path_world_writable(request):
+    """Mock is_path_world_writable to always return False to avoid early exit."""
+    with mock.patch("siun.config.is_path_world_writable", return_value=False):
+        yield

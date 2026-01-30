@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `v2_critera` setting for more flexible and robust criteria configuration.
 - Added update providers for easier (and slightly more secure) setup.
 - Added `news` subcommand.
+- Added permission check for config file
 
 ### Changed
 

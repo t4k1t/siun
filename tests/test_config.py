@@ -113,6 +113,7 @@ def mock_read_config(_):
     return tomllib.loads("")
 
 
+@pytest.mark.usefixtures("patch_is_path_world_writable")
 class TestConfig:
     """Test Config class."""
 
@@ -201,6 +202,7 @@ class TestConfig:
         assert news_source.max_items == 1
 
 
+@pytest.mark.usefixtures("patch_is_path_world_writable")
 class TestThresholdsConfig:
     """Test config with v2 thresholds."""
 
@@ -216,7 +218,9 @@ class TestThresholdsConfig:
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_V2_THRESHOLDS))
     def test_v2_thresholds(self, mock_read_config):
         """Test config using v2_thresholds list."""
-        with mock.patch("siun.config.get_default_config_dir"):
+        with (
+            mock.patch("siun.config.get_default_config_dir"),
+        ):
             config = get_config()
 
         names = [t.name for t in config.v2_thresholds]
@@ -231,20 +235,27 @@ class TestThresholdsConfig:
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_W_DUPLICATE_T_NAMES))
     def test_v2_thresholds_name_uniqueness(self, mock_read_config):
         """Test v2_thresholds require unique names."""
-        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ConfigError) as exc_info:
+        with (
+            mock.patch("siun.config.get_default_config_dir"),
+            pytest.raises(ConfigError) as exc_info,
+        ):
             get_config()
 
         mock_read_config.assert_called_once()
         assert "threshold must have a unique name" in str(exc_info.value)
 
 
+@pytest.mark.usefixtures("patch_is_path_world_writable")
 class TestCriteriaConfig:
     """Test config with v2 criteria."""
 
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_LEGACY_CRITERIA))
     def test_legacy_criteria_raises_error(self, mock_read_config):
         """Test config using legacy 'criteria' dict."""
-        with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ConfigError) as exc_info:
+        with (
+            mock.patch("siun.config.get_default_config_dir"),
+            pytest.raises(ConfigError) as exc_info,
+        ):
             get_config()
 
         mock_read_config.assert_called_once()

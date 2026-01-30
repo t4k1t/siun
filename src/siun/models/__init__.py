@@ -1,5 +1,11 @@
-from .criteria import *
-from .formatting import *
-from .news import *
-from .thresholds import *
-from .updates import *
+from .criteria import CriterionArchaudit as CriterionArchaudit
+from .criteria import CriterionAvailable as CriterionAvailable
+from .criteria import CriterionCount as CriterionCount
+from .criteria import CriterionCustom as CriterionCustom
+from .criteria import CriterionPattern as CriterionPattern
+from .criteria import V2Criterion as V2Criterion
+from .formatting import ClickColor as ClickColor
+from .news import NewsEntry as NewsEntry
+from .news import NewsProvider as NewsProvider
+from .thresholds import V2Threshold as V2Threshold
+from .updates import PackageUpdate as PackageUpdate

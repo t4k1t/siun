@@ -25,6 +25,7 @@ state_dir = "/tmp/siun-test-state"
 """
 
 
+@pytest.mark.usefixtures("patch_is_path_world_writable")
 class TestCheckCommand:
     """Test check command."""
 

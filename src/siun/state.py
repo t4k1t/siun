@@ -2,7 +2,6 @@
 
 import datetime
 import importlib.util
-import stat
 import traceback
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
@@ -18,7 +17,7 @@ from siun.errors import (
 )
 from siun.models import ClickColor, PackageUpdate, V2Criterion, V2Threshold
 from siun.providers import UpdateProvider
-from siun.util import get_default_criteria_dir, safely_write_to_disk
+from siun.util import get_default_criteria_dir, is_path_world_writable, safely_write_to_disk
 
 BUILTIN_CRITERIA = {
     "available": CriterionAvailable(),
@@ -37,8 +36,11 @@ def load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Pa
     if not include_path.exists() or not include_path.is_dir():
         return user_criteria
 
-    if bool(include_path.stat().st_mode & stat.S_IWOTH):
-        message = f"Criteria directory '{include_path}' is world-writable"
+    if is_path_world_writable(include_path):
+        message = (
+            f"Criteria directory '{include_path}' is world-writable. "
+            "Please change its permissions to be more restrictive."
+        )
         raise ImportError(message)
 
     # Get list of enabled user criteria from config

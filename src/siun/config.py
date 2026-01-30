@@ -21,7 +21,7 @@ from siun.models import (
 )
 from siun.notification import UpdateNotification
 from siun.providers import UPDATE_PROVIDER_REGISTRY, UpdateProvider, UpdateProviderPacman
-from siun.util import get_default_config_dir, get_default_state_dir
+from siun.util import get_default_config_dir, get_default_state_dir, is_path_world_writable
 
 
 def get_default_thresholds() -> list[V2Threshold]:
@@ -163,6 +163,12 @@ def get_config(config_path: Path | None = None) -> SiunConfig:
     """Get config from defaults and user supplied values."""
     if config_path is None:
         config_path = get_default_config_dir() / Path("config.toml")
+
+    if is_path_world_writable(config_path):
+        message = (
+            f"Config file '{config_path}' is world-writable. Please change its permissions to be more restrictive."
+        )
+        raise ConfigError(message, config_path)
 
     config_dict: dict[str, Any] = {}
     if config_path.exists() and config_path.is_file():
