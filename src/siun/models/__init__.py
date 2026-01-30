@@ -1,3 +1,4 @@
+from .criteria import CRITERION_REGISTRY as CRITERION_REGISTRY
 from .criteria import CriterionArchaudit as CriterionArchaudit
 from .criteria import CriterionAvailable as CriterionAvailable
 from .criteria import CriterionCount as CriterionCount
