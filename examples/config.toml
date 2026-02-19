@@ -1,4 +1,4 @@
-# General settings
+# Example config for siun
 
 # Minimum age of cached update state before it will be refreshed
 cache_min_age_minutes = 30
@@ -18,7 +18,7 @@ custom_format = "$status_text: $available_updates"
 state_dir = "$XDG_STATE_HOME/siun"
 
 # Provider of available updates
-[update_provider]
+[[update_providers]]
 # Available providers: [ pacman | generic ]
 name = "pacman"
 
@@ -30,7 +30,6 @@ max_items = 2                                          # Optional; defaults to 3
 url = "https://archlinux.org/feeds/news"
 title = "Totally not Arch Linux News"    # Optional; defaults to feed title
 max_items = 1
-
 
 [[v2_thresholds]]
 name = "critical"         # Unique name
