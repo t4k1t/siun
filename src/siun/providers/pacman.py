@@ -24,10 +24,7 @@ class UpdateProviderPacman(UpdateProvider):
 
     def fetch_updates(self) -> list[PackageUpdate]:
         """Get list of updates from pacman."""
-        print("b4 pick")
         cmd = self.pick_cmd(self._default_cmds)
-        print("after pick")
-        print(cmd)
         try:
             available_updates_run = subprocess.run(  # noqa: S603
                 cmd,

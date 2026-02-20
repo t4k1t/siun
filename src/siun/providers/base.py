@@ -45,7 +45,6 @@ class UpdateProvider(BaseModel):
 
     def pick_cmd(self, cmds: list[list[str]]) -> list[str]:
         """Pick the first available command from the list."""
-        print("pick")
         for cmd in cmds:
             if which(cmd[0]) is not None:
                 return cmd
