@@ -156,7 +156,7 @@ class TestCheckCommand:
     @mock.patch("siun.cli.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
-        return_value=[PackageUpdate(name="package")],
+        return_value=[PackageUpdate(name="package", provider="pacman")],
     )
     @mock.patch("siun.cli_utils.get_config")
     def test_check_stale_state(
@@ -211,7 +211,7 @@ class TestCheckCommand:
     @mock.patch("siun.cli.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
-        return_value=[PackageUpdate(name="package")],
+        return_value=[PackageUpdate(name="package", provider="pacman")],
     )
     @mock.patch("siun.cli_utils.get_config")
     def test_check_with_custom_output_format(
@@ -238,7 +238,7 @@ class TestCheckCommand:
     @mock.patch("siun.cli.load_state", return_value=False)
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
-        return_value=[PackageUpdate(name="package")],
+        return_value=[PackageUpdate(name="package", provider="pacman")],
     )
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_CUSTOM_STATE_FILE_PATH))
     def test_custom_state_file_path_config(
@@ -275,7 +275,7 @@ class TestCheckCommand:
             no_update=True,
             criteria=[],
             thresholds=[],
-            update_provider="dummy",
+            update_providers=["dummy"],
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
         )
@@ -300,7 +300,7 @@ class TestCheckCommand:
             state="OK",
             thresholds=[],
             matched_criteria={},
-            available_updates=[{"name": "siun"}],
+            available_updates=[{"name": "siun", "provider": "pacman"}],
             criteria_settings=[],
         )
         mock_read_state.return_value = existing_state
@@ -309,19 +309,19 @@ class TestCheckCommand:
             no_update=True,
             criteria=config_criteria,
             thresholds=[],
-            update_provider="dummy",
+            update_providers=["dummy"],
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
         )
         mock__update_state.assert_not_called()
         mock_read_state.assert_called_once()
         mock_persist_state.assert_not_called()
-        assert result.available_updates == [PackageUpdate(name="siun")]
+        assert result.available_updates == [PackageUpdate(name="siun", provider="pacman")]
 
     @mock.patch("siun.cli.INSTALLED_FEATURES", [])
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
-        return_value=[PackageUpdate(name="package")],
+        return_value=[PackageUpdate(name="package", provider="pacman")],
     )
     @mock.patch("siun.cli_utils.get_config")
     def test_check_notification_wo_feature(self, mock_get_config, mockfetch_available_updates, config_w_notification):
@@ -337,7 +337,7 @@ class TestCheckCommand:
     @mock.patch("siun.notification.UpdateNotification.show")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
-        return_value=[PackageUpdate(name="package")],
+        return_value=[PackageUpdate(name="package", provider="pacman")],
     )
     @mock.patch("siun.cli_utils.get_config")
     def test_check_notification(self, mock_get_config, mockfetch_available_updates, mock_show, config_w_notification):
@@ -351,7 +351,10 @@ class TestCheckCommand:
         assert result.output == "Updates available\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.providers.UpdateProviderPacman.fetch_updates", return_value=[PackageUpdate(name="siun")])
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[PackageUpdate(name="siun", provider="pacman")],
+    )
     @mock.patch("siun.cli.load_state")
     @mock.patch("siun.notification.UpdateNotification.show")
     @mock.patch("siun.cli_utils.get_config")
@@ -379,7 +382,10 @@ class TestCheckCommand:
     @mock.patch("siun.cli.Updates.persist_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
-        return_value=[PackageUpdate(name="package"), PackageUpdate(name="other_package")],
+        return_value=[
+            PackageUpdate(name="package", provider="pacman"),
+            PackageUpdate(name="other_package", provider="pacman"),
+        ],
     )
     @mock.patch("siun.cli.load_state")
     @mock.patch("siun.notification.UpdateNotification.show")

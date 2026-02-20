@@ -118,7 +118,7 @@ class TestConfig:
     """Test Config class."""
 
     @mock.patch("siun.config._read_config", mock_read_config)
-    def test_default_config(self, default_config, default_update_provider):
+    def test_default_config(self, default_config, default_update_providers):
         """Test empty user config."""
         with (
             mock.patch("pathlib.Path.exists", return_value=True),
@@ -127,7 +127,7 @@ class TestConfig:
             config = get_config()
 
         assert config == default_config
-        assert config.update_provider == default_update_provider
+        assert config.update_providers == default_update_providers
 
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_MISSING_WEIGHTS))
     def test_missing_weights(self, mock_read_config):

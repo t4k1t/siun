@@ -1,5 +1,7 @@
 """Test update providers module."""
 
+from unittest import mock
+
 import pytest
 from pydantic import ValidationError
 
@@ -51,41 +53,33 @@ class TestUpdateProviderBase:
 class TestUpdateProviderPacman:
     """Test UpdateProviderPacman."""
 
-    def test_fetch_updates(self, fp):
+    @mock.patch("siun.providers.pacman.UpdateProviderPacman.pick_cmd", return_value=[":"])
+    @mock.patch("subprocess.run")
+    def test_fetch_updates(self, mock_run, mock_pick_cmd):
         """Test fetch_updates success."""
-        fp.register([":"], stdout="siun 1.0.0 -> 2.0.0")
-
-        provider = UpdateProviderPacman(cmd=[":"])
+        mock_run.return_value = mock.Mock(stdout="siun 1.0.0 -> 2.0.0", returncode=0)
+        provider = UpdateProviderPacman()
         available_updates = provider.fetch_updates()
-        assert available_updates == [PackageUpdate(name="siun", old_version="1.0.0", new_version="2.0.0")]
+        assert available_updates == [
+            PackageUpdate(name="siun", old_version="1.0.0", new_version="2.0.0", provider="pacman")
+        ]
 
-    def test_fetch_updates_cmd_fails(self, fp):
+    @mock.patch("siun.providers.pacman.UpdateProviderPacman.pick_cmd", return_value=[":"])
+    @mock.patch("subprocess.run", side_effect=PermissionError("Permission denied"))
+    def test_fetch_updates_cmd_fails(self, mock_run, mock_pick_cmd):
         """Test fetch_updates with failing cmd."""
-
-        def callback_func(process):
-            process.returncode = 2
-            raise PermissionError("Permission denied")  # noqa: EM101
-
-        fp.register([":"], callback=callback_func)
-
-        provider = UpdateProviderPacman(cmd=[":"])
+        provider = UpdateProviderPacman()
         with pytest.raises(UpdateProviderError) as excinfo:
             provider.fetch_updates()
         assert "Permission denied" in str(excinfo.value)
 
+    @mock.patch("siun.providers.pacman.UpdateProviderPacman.pick_cmd", return_value=[":"])
     def test_fetch_updates_cmd_not_found(self, fp):
-        """Test fetch_updates with cmd not found."""
-
-        def callback_func(process):
-            process.returncode = 2
-            raise FileNotFoundError("command not found")  # noqa: EM101
-
-        fp.register([":"], callback=callback_func)
-
-        provider = UpdateProviderPacman(cmd=[":"])
+        """Test fetch_updates with cmd not installed."""
+        provider = UpdateProviderPacman()
         with pytest.raises(UpdateProviderError) as excinfo:
             provider.fetch_updates()
-        assert "command not found" in str(excinfo.value)
+        assert "No such file or directory: ':'" in str(excinfo.value)
 
     def test_fetch_updates_invalid_cmd(self, fp):
         """Test fetch_updates with invalid cmd."""
@@ -104,4 +98,6 @@ class TestUpdateProviderGeneric:
 
         provider = UpdateProviderGeneric(cmd=[":"], pattern=r"(?P<name>[a-z]+)\s+(?P<new_version>[0-9\.]+)")
         available_updates = provider.fetch_updates()
-        assert available_updates == [PackageUpdate(name="siun", new_version="2.7.18", old_version=None)]
+        assert available_updates == [
+            PackageUpdate(name="siun", new_version="2.7.18", old_version=None, provider="generic")
+        ]
