@@ -36,7 +36,12 @@ class TestUpdates:
     def test_defaults_recommended(self, default_config, default_thresholds):
         """Test recommended updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
-        updates.evaluate(available_updates=[PackageUpdate(name="siun"), PackageUpdate(name="linux")])
+        updates.evaluate(
+            available_updates=[
+                PackageUpdate(name="siun", provider="pacman"),
+                PackageUpdate(name="linux", provider="pacman"),
+            ]
+        )
         result = updates.text_value
 
         assert result == "Updates recommended"
@@ -46,9 +51,9 @@ class TestUpdates:
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.evaluate(
             available_updates=[
-                PackageUpdate(name="siun"),
-                PackageUpdate(name="linux"),
-                *[PackageUpdate(name="package")] * 15,
+                PackageUpdate(name="siun", provider="pacman"),
+                PackageUpdate(name="linux", provider="pacman"),
+                *[PackageUpdate(name="package", provider="pacman")] * 15,
             ]
         )
         result = updates.text_value
@@ -62,7 +67,7 @@ class TestUpdates:
             "{"
             '"last_update": "1970-01-01T01:00:00Z", '
             '"state": "OK", '
-            '"matched_criteria": {}, "available_updates": [{"name": "siun"}]'
+            '"matched_criteria": {}, "available_updates": [{"name": "siun", "provider": "pacman"}]'
             "}"
         )
         mock_open.return_value = json_content
@@ -70,7 +75,7 @@ class TestUpdates:
         updates = load_state(mock_file)
 
         assert updates
-        assert updates.available_updates == [PackageUpdate(name="siun")]
+        assert updates.available_updates == [PackageUpdate(name="siun", provider="pacman")]
 
     @mock.patch("siun.state.Path.open")
     def test_read_state_handles_deprecated_types(self, mock_open):
@@ -133,7 +138,10 @@ class TestUpdates:
     def test_format_object_populated(self, default_config, default_thresholds):
         """Test format_object returns correct values for populated state."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
-        updates.available_updates = [PackageUpdate(name="siun"), PackageUpdate(name="linux")]
+        updates.available_updates = [
+            PackageUpdate(name="siun", provider="pacman"),
+            PackageUpdate(name="linux", provider="pacman"),
+        ]
         updates.matched_criteria = {
             "available": {"weight": 1, "name_short": "av"},
             "count": {"weight": 2, "name_short": "co"},

@@ -13,9 +13,9 @@ from siun.state import FormatObject, Updates
 
 
 @pytest.fixture(scope="module")
-def default_update_provider():
+def default_update_providers():
     """Provide default update provider."""
-    return UpdateProviderPacman()
+    return [UpdateProviderPacman()]
 
 
 @pytest.fixture(scope="module")
@@ -28,7 +28,7 @@ def default_thresholds():
 def default_config(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        update_provider={"name": "pacman"},
+        update_providers=[{"name": "pacman"}],
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -46,7 +46,7 @@ def default_config(default_thresholds):
 def config_w_notification(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        update_provider={"name": "pacman"},
+        update_providers=[{"name": "pacman"}],
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -64,7 +64,7 @@ def config_w_notification(default_thresholds):
 def config_w_notification_threshold(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        update_provider={"name": "pacman"},
+        update_providers=[{"name": "pacman"}],
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -82,7 +82,7 @@ def config_w_notification_threshold(default_thresholds):
 def v2_config_w_custom_format(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        update_provider={"name": "pacman"},
+        update_providers=[{"name": "pacman"}],
         cache_min_age_minutes=30,
         v2_thresholds=[V2Threshold(score=1, name="available", text="Updates available")],
         v2_criteria=[
@@ -127,14 +127,14 @@ def notification_mock():
 
 @pytest.fixture(scope="module")
 def updates_single():
-    return PackageUpdate(name="siun")
+    return PackageUpdate(name="siun", provider="name")
 
 
 @pytest.fixture
 def updates_multiple(count: int = 2):
     updates = []
     for i in range(count):
-        updates.append(PackageUpdate(name=f"package_{i}"))
+        updates.append(PackageUpdate(name=f"package_{i}", provider="name"))
     return updates
 
 

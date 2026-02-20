@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the `i3status` output format - similar results can be achieved with the `custom` output format.
 - `thresholds` field from configuration - use `v2_thresholds` instead.
 - `criteria` field from configuration - use `v2_criteria` instead.
-- `cmd_available` field from configuration - use `update_provider` instead.
+- `cmd_available` field from configuration - use `update_providers` instead.
 - `state_file` field from configuration - use `state_dir` instead.
 
 ## [1.5.1] - 2025-09-20

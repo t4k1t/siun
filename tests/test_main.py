@@ -70,7 +70,7 @@ class TestMain:
         result = _get_updates(
             no_cache=False,
             no_update=True,
-            update_provider="dummy",
+            update_providers=["dummy"],
             criteria=config_criteria,
             thresholds=v2_config_w_custom_format.v2_thresholds,
             cache_min_age_minutes=10,
@@ -109,7 +109,7 @@ class TestMain:
             _get_updates(
                 no_cache=False,
                 no_update=False,
-                update_provider="dummy",
+                update_providers=["dummy"],
                 criteria=[],
                 thresholds=[threshold1, threshold2],
                 cache_min_age_minutes=10,
@@ -145,7 +145,7 @@ class TestMain:
             _get_updates(
                 no_cache=False,
                 no_update=False,
-                update_provider="dummy",
+                update_providers=["dummy"],
                 criteria=[],
                 thresholds=[threshold],
                 cache_min_age_minutes=10,

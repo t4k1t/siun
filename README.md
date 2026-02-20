@@ -87,11 +87,11 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
 - **Old fields:**  
   1. `thresholds` → replaced by `v2_thresholds`
   2. `criteria` → replaced by `v2_criteria`
-  3. `cmd_available` → replaced by `update_provider`
+  3. `cmd_available` → replaced by `update_providers`
 - **New fields:**  
   1. `v2_thresholds`: List of threshold objects with `name`, `score`, `color`, and `text`.
   2. `v2_criteria`: List of criterion objects with `name`, `weight`, and optional parameters.
-  3. `update_provider`: Object describing how to get list of available updates.
+  3. `update_providers`: Object describing how to get list of available updates.
      Update providers make it simpler than ever to set up `siun`. Instead of having to supply the command yourself, just pick an existing provider that does the work for you. E.g. the `pacman` update provider already knows how to get the list of available updates from `pacman` - no additional configuration required.
 
 ### Migration Steps
@@ -141,7 +141,7 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
    count = 15
 
    # Update provider
-   [update_provider]
+   [[update_providers]]
    name = "generic"
    cmd = ["checkupdates", "--nocolor"]
       ```
@@ -154,7 +154,7 @@ Old fields (`thresholds`, `criteria`) are no longer supported.
 
 ### Update Providers
 
-Update providers tell `siun` how to fetch the list of packages with available updates. This is configured using the `[update_provider]` section in your `config.toml`.
+Update providers tell `siun` how to fetch the list of packages with available updates. This is configured using the `[[update_providers]]` section in your `config.toml`.
 
 > ℹ️ If you can't find a provider for your package manager of choice, you can always try to set up the `generic` provider instead.
 
@@ -164,7 +164,7 @@ By default, `siun` is configured to use the `pacman` update provider. This provi
 
 Example default configuration:
 ```toml
-[update_provider]
+[[update_providers]]
 name = "pacman"
 ```
 
@@ -174,7 +174,7 @@ If you use a different package manager, or want to customize how updates are det
 
 Example configuration for the generic provider:
 ```toml
-[update_provider]
+[[update_providers]]
 name = "generic"
 cmd = ["your-update-command", "--flag", "--another-flag"]
 pattern = "(?P<name>.+)"
@@ -184,7 +184,7 @@ pattern = "(?P<name>.+)"
 
 For example, to use the `checkupdates` script (from `pacman-contrib`), configure:
 ```toml
-[update_provider]
+[[update_providers]]
 name = "generic"
 cmd = ["checkupdates", "--nocolor"]
 pattern = "(?P<name>.+)"

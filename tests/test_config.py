@@ -22,7 +22,7 @@ state_dir = "/tmp/siun-test-state"
 
 CONFIG_LEGACY_THRESHOLDS = """
 thresholds = { available = 1, warning = 2, critical = 3 }
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [[v2_criteria]]
 name = "count"
@@ -31,7 +31,7 @@ count = 15
 """
 
 CONFIG_LEGACY_CRITERIA = """
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [criteria]
 critical_pattern = "^package$"
@@ -41,7 +41,7 @@ count_weight = 1
 """
 
 CONFIG_V2_THRESHOLDS = """
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [[v2_thresholds]]
 name = "critical"
@@ -68,7 +68,7 @@ count = 15
 """
 
 CONFIG_W_DUPLICATE_T_NAMES = """
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [[v2_thresholds]]
 name = "dupe"
@@ -87,7 +87,7 @@ count = 15
 """
 
 CONFIG_W_INVALID_NOTIFICATION_THRESHOLD = """
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [[v2_criteria]]
 name = "count"
@@ -118,7 +118,7 @@ class TestConfig:
     """Test Config class."""
 
     @mock.patch("siun.config._read_config", mock_read_config)
-    def test_default_config(self, default_config, default_update_provider):
+    def test_default_config(self, default_config, default_update_providers):
         """Test empty user config."""
         with (
             mock.patch("pathlib.Path.exists", return_value=True),
@@ -127,7 +127,7 @@ class TestConfig:
             config = get_config()
 
         assert config == default_config
-        assert config.update_provider == default_update_provider
+        assert config.update_providers == default_update_providers
 
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_MISSING_WEIGHTS))
     def test_missing_weights(self, mock_read_config):

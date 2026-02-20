@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from shutil import which
 
 from pydantic import BaseModel, ConfigDict
 
@@ -36,10 +37,20 @@ class UpdateProvider(BaseModel):
                     name=match_dict["name"],
                     old_version=match_dict.get("old_version"),
                     new_version=match_dict.get("new_version"),
+                    provider=self.name,
                 )
             )
 
         return available_updates
+
+    def pick_cmd(self, cmds: list[list[str]]) -> list[str]:
+        """Pick the first available command from the list."""
+        for cmd in cmds:
+            if which(cmd[0]) is not None:
+                return cmd
+
+        message = f"no suitable command found among: {cmds}"
+        raise UpdateProviderError(message, self.name)
 
     def __init_subclass__(cls, **kwargs: object) -> None:
         """Register subclass in criterion registry."""

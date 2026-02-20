@@ -17,12 +17,12 @@ from siun.errors import (
     SiunStateUpdateError,
 )
 from siun.formatting import Formatter, OutputFormat
-from siun.models import ClickColor, NewsEntry, NewsProvider, V2Criterion, V2Threshold
+from siun.models import ClickColor, FormatObject, NewsEntry, NewsProvider, V2Criterion, V2Threshold
 from siun.news import INSTALLED_FEATURES as INSTALLED_NEWS_FEATURES
 from siun.news import parse_feed_entries
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
 from siun.providers import UpdateProvider
-from siun.state import FormatObject, Updates, load_state, update_state_with_available_packages
+from siun.state import Updates, load_state, update_state_with_available_packages
 from siun.util import safely_write_to_disk
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -49,7 +49,7 @@ def _get_updates(
     thresholds: list[V2Threshold],
     cache_min_age_minutes: int,
     state_file_path: Path,
-    update_provider: UpdateProvider,
+    update_providers: list[UpdateProvider],
 ) -> Updates:
     siun_state = Updates(criteria_settings=criteria, thresholds=thresholds)
 
@@ -57,7 +57,7 @@ def _get_updates(
         if no_update:
             return siun_state
         try:
-            update_state_with_available_packages(siun_state, update_provider)
+            update_state_with_available_packages(siun_state, update_providers)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         return siun_state
@@ -85,7 +85,7 @@ def _get_updates(
 
     if not existing_state or is_stale:
         try:
-            update_state_with_available_packages(siun_state, update_provider)
+            update_state_with_available_packages(siun_state, update_providers)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         try:
@@ -226,7 +226,7 @@ def check(*, config_path: Path, output_format: OutputFormat, cache: bool, no_upd
             thresholds=config.sorted_thresholds,
             cache_min_age_minutes=config.cache_min_age_minutes,
             state_file_path=config.state_dir / Path("state.json"),
-            update_provider=config.update_provider,
+            update_providers=config.update_providers,
         )
     except SiunGetUpdatesError as error:
         raise SiunCLIError(error.message) from error
