@@ -7,7 +7,7 @@ from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionPattern, SiunCriterion
 from siun.errors import (
@@ -15,7 +15,7 @@ from siun.errors import (
     SiunStateUpdateError,
     UpdateProviderError,
 )
-from siun.models import ClickColor, PackageUpdate, V2Criterion, V2Threshold
+from siun.models import ClickColor, FormatObject, PackageUpdate, V2Criterion, V2Threshold
 from siun.providers import UpdateProvider
 from siun.util import get_default_criteria_dir, is_path_world_writable, safely_write_to_disk
 
@@ -69,21 +69,7 @@ def load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Pa
     return user_criteria
 
 
-class FormatObject(BaseModel):
-    """Objects for output formatting."""
-
-    available_updates: str
-    last_update: str
-    matched_criteria: str
-    matched_criteria_short: str
-    score: int
-    status_text: str
-    update_count: int
-    # Excluded fields won't be usable in custom format
-    state_color: str = Field(exclude=True)
-    state_name: str = Field(exclude=True)
-
-
+# TODO: Move to models; Problem: `Updates` is not fully defined; you should define `V2Criterion`, then call `Updates.model_rebuild()`
 class Updates(BaseModel):
     """Internale state struct."""
 

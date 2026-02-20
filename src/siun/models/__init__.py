@@ -6,6 +6,7 @@ from .criteria import CriterionCustom as CriterionCustom
 from .criteria import CriterionPattern as CriterionPattern
 from .criteria import V2Criterion as V2Criterion
 from .formatting import ClickColor as ClickColor
+from .formatting import FormatObject as FormatObject
 from .news import NewsEntry as NewsEntry
 from .news import NewsProvider as NewsProvider
 from .thresholds import V2Threshold as V2Threshold

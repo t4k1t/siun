@@ -5,7 +5,7 @@ from enum import Enum
 from string import Template
 from typing import Never
 
-from siun.state import FormatObject
+from siun.models import FormatObject
 
 
 class OutputFormat(Enum):

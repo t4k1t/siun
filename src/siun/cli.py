@@ -17,12 +17,12 @@ from siun.errors import (
     SiunStateUpdateError,
 )
 from siun.formatting import Formatter, OutputFormat
-from siun.models import ClickColor, NewsEntry, NewsProvider, V2Criterion, V2Threshold
+from siun.models import ClickColor, FormatObject, NewsEntry, NewsProvider, V2Criterion, V2Threshold
 from siun.news import INSTALLED_FEATURES as INSTALLED_NEWS_FEATURES
 from siun.news import parse_feed_entries
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
 from siun.providers import UpdateProvider
-from siun.state import FormatObject, Updates, load_state, update_state_with_available_packages
+from siun.state import Updates, load_state, update_state_with_available_packages
 from siun.util import safely_write_to_disk
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}

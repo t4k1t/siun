@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 if TYPE_CHECKING:
-    from siun.state import FormatObject
+    from siun.models import FormatObject
 
 
 # NOTE: The reason for all this INSTALLED_FEATURES logic is to provide a nice
