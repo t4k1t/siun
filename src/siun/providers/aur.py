@@ -1,4 +1,4 @@
-"""Pacman package update provider."""
+"""AUR package update provider."""
 
 from __future__ import annotations
 
@@ -9,21 +9,19 @@ from pydantic import ConfigDict
 from siun.errors import UpdateProviderError
 from siun.models import PackageUpdate
 from siun.providers.base import UpdateProvider
-
-PACMAN_PATTERN: str = (
-    r"^(?P<name>[\+_\-\.0-9a-z]+)\s+(?P<old_version>[\+_\-\.\:0-9a-z]+)\s+\-\>\s+(?P<new_version>[\+_\-\.\:0-9a-z\+]+)$"
-)
+from siun.providers.pacman import PACMAN_PATTERN
 
 
-class UpdateProviderPacman(UpdateProvider):
-    """Update provider for pacman."""
+class UpdateProviderAur(UpdateProvider):
+    """Update provider for AUR helpers."""
 
-    name: str = "pacman"
-    _default_cmds: list[list[str]] = [["checkupdates"], ["pacman", "-Qu"]]
+    name: str = "aur"
+    _default_cmds: list[list[str]] = [["aur-check-updates"], ["paru", "--aur", "-Qu"]]
     pattern: str = PACMAN_PATTERN
+    exit_code_no_updates: int = 1
 
     def fetch_updates(self) -> list[PackageUpdate]:
-        """Get list of updates from pacman."""
+        """Get list of updates from AUR helper."""
         cmd = self.pick_cmd(self._default_cmds)
         try:
             available_updates_run = subprocess.run(  # noqa: S603
@@ -36,8 +34,8 @@ class UpdateProviderPacman(UpdateProvider):
             return self.parse_updates(available_updates_run.stdout.splitlines(), self.pattern)
 
         except subprocess.CalledProcessError as error:
-            # When no updates are available, pacman returns exit code 1
-            if error.returncode != 1:
+            # pacman and some AUR helpers return exit code 1 when there are no updates
+            if error.returncode != self.exit_code_no_updates:
                 raise
         except Exception as error:
             message = f"unexpected error: {error}"

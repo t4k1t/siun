@@ -42,15 +42,15 @@ def get_default_criteria() -> list[V2Criterion]:
     ]
 
 
-def get_default_update_provider() -> UpdateProvider:
-    """Get default update provider."""
-    return UpdateProviderPacman()
+def get_default_update_providers() -> list[UpdateProvider]:
+    """Get default update providers."""
+    return [UpdateProviderPacman()]
 
 
 class SiunConfig(BaseModel):
     """Config struct."""
 
-    update_provider: UpdateProvider = Field(default_factory=get_default_update_provider)
+    update_providers: list[UpdateProvider] = Field(default_factory=get_default_update_providers)
     cache_min_age_minutes: int = Field(default=30)
     v2_thresholds: list[V2Threshold] = Field(default_factory=get_default_thresholds)
     v2_criteria: list[V2Criterion] = Field(default_factory=get_default_criteria)
@@ -95,7 +95,7 @@ class SiunConfig(BaseModel):
         if has_criteria:
             message_parts.append("- 'criteria' have been deprecated in favour of 'v2_criteria'")
         if has_cmd_available:
-            message_parts.append("- 'cmd_available' has been deprecated in favour of 'update_provider'")
+            message_parts.append("- 'cmd_available' has been deprecated in favour of 'update_providers'")
         if has_state_file:
             message_parts.append("- 'state_file' has been deprecated in favour of 'state_dir'")
 
@@ -134,11 +134,19 @@ class SiunConfig(BaseModel):
 
         return value
 
-    @field_validator("update_provider")
-    def transform_update_provider(cls, value: UpdateProvider) -> UpdateProvider:
+    @field_validator("update_providers")
+    def transform_update_providers(cls, value: list[UpdateProvider]) -> list[UpdateProvider]:
         """Transform update provider to subclasses of UpdateProvider."""
         registry = UPDATE_PROVIDER_REGISTRY
-        return registry.get(value.name)(**value.model_dump())
+        transformed_value: list[UpdateProvider] = []
+        for provider in value:
+            try:
+                transformed_value.append(registry[provider.name](**provider.model_dump()))
+            except KeyError as error:
+                message = f"unknown update provider: {provider.name}\nAvailable providers: {', '.join(registry.keys())}"
+                raise ValueError(message) from error
+
+        return transformed_value
 
     model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
 
@@ -152,6 +160,7 @@ def _read_config(config_path: Path) -> dict[str, Any]:  # pragma: no cover
 def _format_error_loc(err_loc: tuple[int | str, ...]):
     if err_loc:
         return f"'{'.'.join(str(loc) for loc in err_loc)}': "
+
     return ""
 
 
@@ -177,9 +186,11 @@ def get_config(config_path: Path | None = None) -> SiunConfig:
         except OSError as error:
             message = f"failed to open config file for reading: {error}"
             raise ConfigError(message, config_path) from error
+
         except TOMLDecodeError as error:
             message = f"provided config file not valid: {error}"
             raise ConfigError(message, config_path) from error
+
     else:
         message = f"config file not found: {config_path}\nPlease create a configuration file."
         raise ConfigError(message, config_path)

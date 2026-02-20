@@ -197,10 +197,19 @@ def load_state(state_file_path: Path) -> Updates | None:
         return Updates.model_validate_json(update_file.read())
 
 
-def update_state_with_available_packages(siun_state: Updates, update_provider: UpdateProvider) -> None:
+def get_package_updates(update_providers: list[UpdateProvider]) -> list[PackageUpdate]:
+    """Fetch available package updates."""
+    package_updates: list[PackageUpdate] = []
+    for provider in update_providers:
+        package_updates.extend(provider.fetch_updates())
+
+    return package_updates
+
+
+def update_state_with_available_packages(siun_state: Updates, update_providers: list[UpdateProvider]) -> None:
     """Fetch available package updates and (re-)evaluate update state."""
     try:
-        siun_state.evaluate(available_updates=update_provider.fetch_updates())
+        siun_state.evaluate(available_updates=get_package_updates(update_providers))
     except UpdateProviderError as error:
         message = f"failed to query available updates: {error}"
         raise SiunStateUpdateError(message) from error
