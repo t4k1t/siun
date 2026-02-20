@@ -22,7 +22,7 @@ state_dir = "/tmp/siun-test-state"
 
 CONFIG_LEGACY_THRESHOLDS = """
 thresholds = { available = 1, warning = 2, critical = 3 }
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [[v2_criteria]]
 name = "count"
@@ -31,7 +31,7 @@ count = 15
 """
 
 CONFIG_LEGACY_CRITERIA = """
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [criteria]
 critical_pattern = "^package$"
@@ -41,7 +41,7 @@ count_weight = 1
 """
 
 CONFIG_V2_THRESHOLDS = """
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [[v2_thresholds]]
 name = "critical"
@@ -68,7 +68,7 @@ count = 15
 """
 
 CONFIG_W_DUPLICATE_T_NAMES = """
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [[v2_thresholds]]
 name = "dupe"
@@ -87,7 +87,7 @@ count = 15
 """
 
 CONFIG_W_INVALID_NOTIFICATION_THRESHOLD = """
-[update_provider]
+[[update_providers]]
 name = "pacman"
 [[v2_criteria]]
 name = "count"
