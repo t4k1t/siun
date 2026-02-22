@@ -69,7 +69,8 @@ def load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Pa
     return user_criteria
 
 
-# TODO: Move to models; Problem: `Updates` is not fully defined; you should define `V2Criterion`, then call `Updates.model_rebuild()`
+# TODO: Move to models; Problem: `Updates` is not fully defined; you should
+#       define `V2Criterion`, then call `Updates.model_rebuild()`
 class Updates(BaseModel):
     """Internale state struct."""
 

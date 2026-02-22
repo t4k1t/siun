@@ -13,6 +13,10 @@ alias ta := testall
 @coverage REPORT_TYPE='report':
     uv run coverage {{REPORT_TYPE}}
 
+# Lint source
+@lint:
+    uv run --frozen ruff check src/
+
 # Clean dist
 @clean:
     echo "Cleaning up existing artifacts…"
