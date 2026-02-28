@@ -16,6 +16,7 @@ alias ta := testall
 # Lint source
 @lint:
     uv run --frozen ruff check src/
+    uv run --frozen ty check src/
 
 # Clean dist
 @clean:
