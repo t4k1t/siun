@@ -12,7 +12,7 @@ By calculating an urgency score, `siun` aims to help sysadmins decide how import
 
 -----
 
-[Usage](#usage) • [Installation](#installation) • [Configuration](#configuration) • [License](#license) • [Name](#name)
+[Usage](#Usage) • [Installation](#Installation) • [Configuration](#Configuration) • [License](#License) • [Name](#Name)
 
 ## Usage
 
@@ -22,7 +22,7 @@ On Arch Linux, or any other system that uses `pacman`, the most basic way to use
 siun check
 ```
 
-Any other OS/distribution will require some [configuration](#configuration) first.
+Any other OS/distribution will require some [Configuration](#Configuration) first.
 
 ### Check Command
 
@@ -36,6 +36,12 @@ The `check` command supports a few options:
 - `--no-cache`: Don't read or write cache file
 - `--output-format`: Pick output format for urgency report; Available formats are `[plain|fancy|json|custom]`
 
+### News Command
+
+*NOTE:* Using the `news` command requires the `news` optional feature. See [Optional Features](#Optional_Features)
+
+Running the `news` command prints out unread entries of any configured RSS or Atom feeds. See [Configuration](#Configuration) for information on how to set up feed sources.
+
 ## Installation
 
 ```bash
@@ -46,7 +52,7 @@ pip install siun
 
 Some features require additional dependencies to work which will not be installed by default.
 
-Currently, this only applies to the `notification` feature. In order to use this feature, install `siun` with the `notification` classifier:
+For example, in order to use the `notification` feature, install `siun` with the `notification` classifier:
 
 ```bash
 pip install siun[notification]
@@ -55,6 +61,8 @@ pip install siun[notification]
 The `notification` feature shows a desktop notification the first time a configurable threshold is exceeded. All variables available for the custom output format can also be used to customize the notification body and title.
 
 *NOTE:* Using the `notification` feature in conjunction with the `--no-cache` flag will cause the notification to show up on every check, provided the requirements are met.
+
+The `news` feature adds the `news` command. See above for more information on its usage.
 
 ### Development
 
@@ -230,7 +238,7 @@ cmd_available = "checkupdates --nocolor | cut -d ' ' -f1"
 cmd_available = "{ checkupdates --nocolor; aur-check-updates -n --raw; } | cut -d ' ' -f1"
 ```
 
-#### systemd Unit & Timer
+#### Systemd Unit & Timer
 
 Since the default configuration gets the list of available package updates from `pacman` without syncing, it might be useful to define a system unit & timer which automatically updates the local `pacman` database. Find `pacman-sync.service` and `pacman-sync.timer` in [examples/systemd](examples/systemd) for examples of such.
 
@@ -295,7 +303,7 @@ Despite these measures, custom criteria are inherently powerful and can run arbi
 
 ### Custom Output Format
 
-It's possible to define your own output format by setting a `custom_format` in the configuration file, and passing `--output-format=custom` to the `siun check` call. See [Configuration](#configuration).
+It's possible to define your own output format by setting a `custom_format` in the configuration file, and passing `--output-format=custom` to the `siun check` call. See [Configuration](#Configuration).
 
 Available format variables:
 

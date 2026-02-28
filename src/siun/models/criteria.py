@@ -14,7 +14,7 @@ class V2Criterion(BaseModel):
     short_name: str | None = Field(default=None)
     weight: int
 
-    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="allow")
 
     def __init_subclass__(cls, **kwargs: object) -> None:
         """Register subclass in criterion registry."""
@@ -51,7 +51,7 @@ class CriterionCount(V2Criterion):
     name: str = "count"
     count: int
 
-    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="forbid")
 
 
 class CriterionArchaudit(V2Criterion):
@@ -62,7 +62,7 @@ class CriterionArchaudit(V2Criterion):
     """
 
     name: str = "archaudit"
-    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="forbid")
 
 
 class CriterionPattern(V2Criterion):
@@ -75,11 +75,11 @@ class CriterionPattern(V2Criterion):
     name: str = "pattern"
     pattern: str
 
-    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="forbid")
 
 
 class CriterionCustom(V2Criterion):
     """Criterion for custom criteria."""
 
     name: str = "custom"
-    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="allow")

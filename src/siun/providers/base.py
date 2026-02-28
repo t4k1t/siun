@@ -57,4 +57,4 @@ class UpdateProvider(BaseModel):
         super.__init_subclass__(**kwargs)
         UPDATE_PROVIDER_REGISTRY[cls.name] = cls
 
-    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="allow")

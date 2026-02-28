@@ -139,8 +139,8 @@ def _get_last_news_update(*, sources: list[NewsProvider], last_update_path: Path
     for source in sources:
         for saved_source in from_disk:
             if source.url == saved_source.get("url", ""):
-                source._etag = saved_source.get("etag", None)  # pyright: ignore[reportPrivateUsage]
-                source._last_modified = saved_source.get("last_modified", None)  # pyright: ignore[reportPrivateUsage]
+                source._etag = saved_source.get("etag", None)
+                source._last_modified = saved_source.get("last_modified", None)
                 if not source.title:
                     source.title = saved_source.get("title", "No title")
                 break

@@ -8,7 +8,7 @@ import pytest
 
 from siun.config import SiunConfig, get_default_thresholds
 from siun.models import CriterionAvailable, CriterionCount, CriterionPattern, PackageUpdate, V2Threshold
-from siun.providers import UpdateProviderPacman
+from siun.providers import UpdateProvider, UpdateProviderPacman
 from siun.state import FormatObject, Updates
 
 
@@ -28,7 +28,7 @@ def default_thresholds():
 def default_config(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        update_providers=[{"name": "pacman"}],
+        update_providers=[UpdateProvider(name="pacman")],
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -46,7 +46,7 @@ def default_config(default_thresholds):
 def config_w_notification(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        update_providers=[{"name": "pacman"}],
+        update_providers=[UpdateProvider(name="pacman")],
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -64,7 +64,7 @@ def config_w_notification(default_thresholds):
 def config_w_notification_threshold(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        update_providers=[{"name": "pacman"}],
+        update_providers=[UpdateProvider(name="pacman")],
         cache_min_age_minutes=30,
         v2_thresholds=default_thresholds,
         v2_criteria=[
@@ -82,7 +82,7 @@ def config_w_notification_threshold(default_thresholds):
 def v2_config_w_custom_format(default_thresholds):
     """Provide default config."""
     return SiunConfig(
-        update_providers=[{"name": "pacman"}],
+        update_providers=[UpdateProvider(name="pacman")],
         cache_min_age_minutes=30,
         v2_thresholds=[V2Threshold(score=1, name="available", text="Updates available")],
         v2_criteria=[
@@ -103,7 +103,7 @@ def state_stale(default_thresholds):
             CriterionAvailable(name="available", weight=1),
             CriterionCount(name="count", weight=1, count=2),
         ],
-        thresholds_settings=default_thresholds,
+        thresholds_settings=default_thresholds,  # ty: ignore[unknown-argument]
         available_updates=[],
         last_update=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=1),
     )

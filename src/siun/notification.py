@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 INSTALLED_FEATURES: set[str] = set()
 
 try:
-    from dbus import Byte as DBusByte  # pyright: ignore[reportUnknownVariableType]
+    from dbus import Byte as DBusByte
     from dbus import Interface as DBusInterface
     from dbus import SessionBus
 
@@ -44,13 +44,13 @@ class UpdateNotification(BaseModel):
     icon: str = Field(default="siun-icon")
     title: str = Field(default="$status_text")
     message: str = Field(default="$available_updates")
-    actions: list = []  # pyright: ignore[reportMissingTypeArgument, reportUnknownVariableType]
-    hints: dict = {}  # pyright: ignore[reportMissingTypeArgument, reportUnknownVariableType]
+    actions: list = []
+    hints: dict = {}
     timeout: int = Field(default=5000)
     urgency: NotificationUrgency | None = None
     threshold: str  # NOTE: This field gets validated in the Config model
 
-    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("urgency", mode="before")
     def urgency_must_be_enum(
@@ -70,18 +70,18 @@ class UpdateNotification(BaseModel):
 
     def show(self):
         """Show notification."""
-        session_bus = SessionBus()  # pyright: ignore[reportPossiblyUnboundVariable]
-        notify = session_bus.get_object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")  # pyright: ignore[reportUnknownMemberType]
-        notify_interface = DBusInterface(notify, "org.freedesktop.Notifications")  # pyright: ignore[reportPossiblyUnboundVariable]
+        session_bus = SessionBus()
+        notify = session_bus.get_object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
+        notify_interface = DBusInterface(notify, "org.freedesktop.Notifications")
 
-        notify_interface.Notify(  # pyright: ignore[reportUnknownMemberType]
+        notify_interface.Notify(
             self.app_name,
             self.notification_id,
             self.icon,
             self.title,
             self.message,
-            self.actions,  # pyright: ignore[reportUnknownMemberType]
-            self.hints,  # pyright: ignore[reportUnknownMemberType]
+            self.actions,
+            self.hints,
             self.timeout,
         )
 

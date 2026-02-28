@@ -54,11 +54,11 @@ class UpdateProviderFlatpak(UpdateProvider):
             available_updates.append(
                 PackageUpdate(
                     name=name,
-                    old_version=None,
-                    new_version=version or branch or commit,
+                    old_version=version or branch or commit,
+                    new_version=None,
                     provider=self.name,
                 )
             )
         return available_updates
 
-    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="forbid")

@@ -49,8 +49,8 @@ def safely_write_to_disk(*, content: str, target_path: Path) -> None:
     the writing operation is done.
     """
     if not Path.exists(target_path.parent):
-        # Create parent dir for state file path if it doesn't exist
-        Path.mkdir(Path(target_path.parent))
+        # Create parent directory for state file path if it doesn't exist
+        Path.mkdir(Path(target_path.parent), parents=True, exist_ok=True)
 
     with tempfile.NamedTemporaryFile(mode="w+") as update_file:
         update_file.write(content)

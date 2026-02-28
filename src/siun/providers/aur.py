@@ -43,4 +43,4 @@ class UpdateProviderAur(UpdateProvider):
 
         return []
 
-    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="forbid")

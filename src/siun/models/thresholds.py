@@ -15,4 +15,4 @@ class V2Threshold(BaseModel):
     text: str
     color: ClickColor = ClickColor.reset
 
-    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="forbid")

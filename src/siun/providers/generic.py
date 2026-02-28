@@ -33,4 +33,4 @@ class UpdateProviderGeneric(UpdateProvider):
             message = f"unexpected error: {error}"
             raise UpdateProviderError(message, self.name) from error
 
-    model_config = ConfigDict(extra="forbid")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="forbid")

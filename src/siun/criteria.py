@@ -7,7 +7,7 @@ from typing import Any
 class SiunCriterion:
     """Base class for criteria."""
 
-    def is_fulfilled(self, criteria_settings: dict[str, Any], available_updates: list[str]) -> bool:  # pyright: ignore[reportUnusedParameter]
+    def is_fulfilled(self, criteria_settings: dict[str, Any], available_updates: list[str]) -> bool:
         """Override me."""
         raise NotImplementedError
 
@@ -15,7 +15,7 @@ class SiunCriterion:
 class CriterionAvailable(SiunCriterion):
     """Check if there are any available updates."""
 
-    def is_fulfilled(self, criteria_settings: dict[str, Any], available_updates: list[str]) -> bool:  # noqa: ARG002
+    def is_fulfilled(self, criteria_settings: dict[str, Any], available_updates: list[str]) -> bool:
         """Check criterion."""
         return bool(available_updates)
 

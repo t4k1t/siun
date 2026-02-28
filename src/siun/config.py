@@ -87,7 +87,7 @@ class SiunConfig(BaseModel):
         has_cmd_available = "cmd_available" in data
         has_state_file = "state_file" in data
         if not has_thresholds and not has_criteria and not has_cmd_available:
-            return data  # pyright: ignore[reportUnknownVariableType]
+            return data
 
         message_parts = ["Found deprecated config fields: "]
         if has_thresholds:
@@ -148,7 +148,7 @@ class SiunConfig(BaseModel):
 
         return transformed_value
 
-    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="allow")
 
 
 def _read_config(config_path: Path) -> dict[str, Any]:  # pragma: no cover

@@ -13,4 +13,4 @@ class PackageUpdate(BaseModel):
     new_version: str | None = None
     provider: str
 
-    model_config = ConfigDict(extra="allow")  # pyright: ignore[reportUnannotatedClassAttribute]
+    model_config = ConfigDict(extra="allow")
