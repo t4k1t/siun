@@ -11,3 +11,4 @@ from .news import NewsEntry as NewsEntry
 from .news import NewsProvider as NewsProvider
 from .thresholds import V2Threshold as V2Threshold
 from .updates import PackageUpdate as PackageUpdate
+from .updates import Updates as Updates

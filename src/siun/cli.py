@@ -18,11 +18,12 @@ from siun.errors import (
 )
 from siun.formatting import Formatter, OutputFormat
 from siun.models import ClickColor, FormatObject, NewsEntry, NewsProvider, V2Criterion, V2Threshold
+from siun.models.updates import Updates
 from siun.news import INSTALLED_FEATURES as INSTALLED_NEWS_FEATURES
 from siun.news import parse_feed_entries
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
 from siun.providers import UpdateProvider
-from siun.state import Updates, load_state, update_state_with_available_packages
+from siun.state import get_merged_criteria, get_package_updates, load_state
 from siun.util import safely_write_to_disk
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -53,11 +54,13 @@ def _get_updates(
 ) -> Updates:
     siun_state = Updates(criteria_settings=criteria, thresholds=thresholds)
 
+    criteria_dict = get_merged_criteria(criteria_settings=criteria)
+
     if no_cache:
         if no_update:
             return siun_state
         try:
-            update_state_with_available_packages(siun_state, update_providers)
+            siun_state.evaluate(criteria_dict, available_updates=get_package_updates(update_providers))
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         return siun_state
@@ -74,7 +77,7 @@ def _get_updates(
         siun_state.thresholds = thresholds
         siun_state.criteria_settings = criteria
         try:
-            siun_state.evaluate(available_updates=existing_state.available_updates)
+            siun_state.evaluate(criteria_dict, available_updates=existing_state.available_updates)
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         if siun_state.last_match != siun_state.match:
@@ -85,7 +88,7 @@ def _get_updates(
 
     if not existing_state or is_stale:
         try:
-            update_state_with_available_packages(siun_state, update_providers)
+            siun_state.evaluate(criteria_dict, available_updates=get_package_updates(update_providers))
         except SiunStateUpdateError as error:
             raise SiunGetUpdatesError(error.message) from error
         try:
@@ -136,6 +139,7 @@ def _get_last_news_update(*, sources: list[NewsProvider], last_update_path: Path
                 raise SiunCLIError(
                     message=f"Failed to parse last news update state from disk; state path: {last_update_path}"
                 ) from error
+
     for source in sources:
         for saved_source in from_disk:
             if source.url == saved_source.get("url", ""):
