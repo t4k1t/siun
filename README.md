@@ -12,7 +12,7 @@ By calculating an urgency score, `siun` aims to help sysadmins decide how import
 
 -----
 
-[Usage](#Usage) • [Installation](#Installation) • [Configuration](#Configuration) • [License](#License) • [Name](#Name)
+[Usage](#usage) • [Installation](#installation) • [Configuration](#configuration) • [License](#license) • [Name](#name)
 
 ## Usage
 
@@ -22,7 +22,7 @@ On Arch Linux, or any other system that uses `pacman`, the most basic way to use
 siun check
 ```
 
-Any other OS/distribution will require some [Configuration](#Configuration) first.
+Any other OS/distribution will require some [Configuration](#configuration) first.
 
 ### Check Command
 
@@ -38,9 +38,9 @@ The `check` command supports a few options:
 
 ### News Command
 
-*NOTE:* Using the `news` command requires the `news` optional feature. See [Optional Features](#Optional_Features)
+*NOTE:* Using the `news` command requires the `news` optional feature. See [Optional Features](#optional-features)
 
-Running the `news` command prints out unread entries of any configured RSS or Atom feeds. See [Configuration](#Configuration) for information on how to set up feed sources.
+Running the `news` command prints out unread entries of any configured RSS or Atom feeds. See [Configuration](#configuration) for information on how to set up feed sources.
 
 ## Installation
 
@@ -303,7 +303,7 @@ Despite these measures, custom criteria are inherently powerful and can run arbi
 
 ### Custom Output Format
 
-It's possible to define your own output format by setting a `custom_format` in the configuration file, and passing `--output-format=custom` to the `siun check` call. See [Configuration](#Configuration).
+It's possible to define your own output format by setting a `custom_format` in the configuration file, and passing `--output-format=custom` to the `siun check` call. See [Configuration](#configuration).
 
 Available format variables:
 
