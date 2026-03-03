@@ -1,7 +1,6 @@
 """CLI commands for siun."""
 
 import datetime
-import json
 from collections import defaultdict
 from pathlib import Path
 
@@ -17,14 +16,18 @@ from siun.errors import (
     SiunStateUpdateError,
 )
 from siun.formatting import Formatter, OutputFormat
-from siun.models import ClickColor, FormatObject, NewsEntry, NewsProvider, V2Criterion, V2Threshold
+from siun.models import FormatObject, NewsEntry, V2Criterion, V2Threshold
 from siun.models.updates import Updates
 from siun.news import INSTALLED_FEATURES as INSTALLED_NEWS_FEATURES
-from siun.news import parse_feed_entries
+from siun.news import (
+    format_news_entries,
+    load_news_state,
+    parse_feed_entries,
+    save_news_state,
+)
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
 from siun.providers import UpdateProvider
 from siun.state import get_merged_criteria, get_package_updates, load_state
-from siun.util import safely_write_to_disk
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES | INSTALLED_NEWS_FEATURES
@@ -129,38 +132,6 @@ def _handle_notification(config: SiunConfig, siun_state: Updates) -> None:
     notification.show()
 
 
-def _get_last_news_update(*, sources: list[NewsProvider], last_update_path: Path) -> None:
-    from_disk: list[dict[str, str]] = []
-    if last_update_path.exists() and last_update_path.is_file():
-        with last_update_path.open("r", encoding="utf-8") as file_obj:
-            try:
-                from_disk = json.loads(file_obj.read())
-            except json.JSONDecodeError as error:
-                raise SiunCLIError(
-                    message=f"Failed to parse last news update state from disk; state path: {last_update_path}"
-                ) from error
-
-    for source in sources:
-        for saved_source in from_disk:
-            if source.url == saved_source.get("url", ""):
-                source._etag = saved_source.get("etag", None)
-                source._last_modified = saved_source.get("last_modified", None)
-                if not source.title:
-                    source.title = saved_source.get("title", "No title")
-                break
-    return None
-
-
-def _write_last_news_update(*, sources: list[NewsProvider], last_update_path: Path) -> None:
-    """Write news state to disk."""
-    return safely_write_to_disk(
-        content=json.dumps(
-            [source.model_dump(include={"url", "etag", "last_modified", "title"}) for source in sources]
-        ),
-        target_path=last_update_path,
-    )
-
-
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(__version__)
 def cli() -> None:  # noqa: D103 # pragma: no cover
@@ -180,26 +151,16 @@ def news(*, config_path: Path, nocolor: bool) -> None:
     news_sources = config.news
 
     last_update_path = config.state_dir / Path("last_news_update")
-    # Load ETag and Last-Modified headers from disk
-    _get_last_news_update(sources=news_sources, last_update_path=last_update_path)
+    load_news_state(news_sources, last_update_path)
 
     news_entries: dict[str, list[NewsEntry]] = defaultdict(list)
     for source in news_sources:
         feed_title, entries = parse_feed_entries(source)
         news_entries[feed_title].extend(entries)
 
-    # Write updated ETag and Last-Modified headers to disk to avoid requesting data we've already seen
-    _write_last_news_update(sources=news_sources, last_update_path=last_update_path)
+    save_news_state(news_sources, last_update_path)
 
-    # Print news entries
-    for feed_title, entries in news_entries.items():
-        click.echo(click.style(f"{feed_title}:\n", fg=ClickColor.yellow.value if not nocolor else None))
-        for entry in entries:
-            click.echo(f"- {entry.title}")
-            click.echo(click.style(f"  {entry.link}", fg=ClickColor.blue.value if not nocolor else None))
-            click.echo(f"  {entry.published_at}\n")
-        if not entries:
-            click.echo("No new entries.\n")
+    click.echo(format_news_entries(news_entries, nocolor))
 
 
 @cli.command()
