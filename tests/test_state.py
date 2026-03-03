@@ -9,8 +9,8 @@ from unittest import mock
 import pytest
 
 from siun.errors import CriterionError
-from siun.models import CriterionCustom, PackageUpdate
-from siun.state import FormatObject, Updates, load_state, load_user_criteria
+from siun.models import CriterionCustom, FormatObject, PackageUpdate, Updates
+from siun.state import BUILTIN_CRITERIA, _load_user_criteria, get_merged_criteria, load_state
 from siun.util import get_default_criteria_dir
 
 
@@ -20,7 +20,7 @@ class TestUpdates:
     def test_defaults_ok(self, default_config, default_thresholds):
         """Test no available updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
-        updates.evaluate(available_updates=[])
+        updates.evaluate(criteria=BUILTIN_CRITERIA, available_updates=[])
         result = updates.text_value
 
         assert result == "No matches."
@@ -28,7 +28,7 @@ class TestUpdates:
     def test_defaults_available(self, default_config, default_thresholds, updates_single):
         """Test available updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
-        updates.evaluate(available_updates=[updates_single])
+        updates.evaluate(criteria=BUILTIN_CRITERIA, available_updates=[updates_single])
         result = updates.text_value
 
         assert result == "Updates available"
@@ -37,10 +37,11 @@ class TestUpdates:
         """Test recommended updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.evaluate(
+            criteria=BUILTIN_CRITERIA,
             available_updates=[
                 PackageUpdate(name="siun", provider="pacman"),
                 PackageUpdate(name="linux", provider="pacman"),
-            ]
+            ],
         )
         result = updates.text_value
 
@@ -50,11 +51,12 @@ class TestUpdates:
         """Test required updates."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.evaluate(
+            criteria=BUILTIN_CRITERIA,
             available_updates=[
                 PackageUpdate(name="siun", provider="pacman"),
                 PackageUpdate(name="linux", provider="pacman"),
                 *[PackageUpdate(name="package", provider="pacman")] * 15,
-            ]
+            ],
         )
         result = updates.text_value
 
@@ -120,20 +122,19 @@ class TestUpdates:
 
         assert result is None
 
+    @mock.patch("siun.state._load_user_criteria", side_effect=RuntimeError("fail!"))
     def test_update_raises_criterion_error_on_user_criteria_failure(
-        self, default_config, default_thresholds, monkeypatch, updates_single
+        self,
+        mock_load_user_criteria,
+        default_config,
+        default_thresholds,
+        updates_single,
     ):
-        """Test Updates.update raises CriterionError if user criteria loading fails."""
-        updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
-
-        def fail_loader(**kwargs):
-            raise RuntimeError("fail!")  # noqa: EM101
-
-        monkeypatch.setattr("siun.state.load_user_criteria", fail_loader)
+        """Test get_merged_criteria raises CriterionError if user criteria loading fails."""
         with pytest.raises(CriterionError) as excinfo:
-            updates.evaluate(available_updates=updates_single)
+            get_merged_criteria(criteria_settings=default_config.v2_criteria)
 
-        assert "unable to load user criteria" in str(excinfo.value)
+        assert "Error loading criteria: fail!" in str(excinfo.value)
 
     def test_format_object_populated(self, default_config, default_thresholds):
         """Test format_object returns correct values for populated state."""
@@ -160,14 +161,14 @@ class TestUpdates:
         """Test that match is reset to None when score is below all thresholds."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
         updates.match = default_thresholds[-1]
-        updates.evaluate(available_updates=[])
+        updates.evaluate(criteria=BUILTIN_CRITERIA, available_updates=[])
         assert updates.match is None
 
     @pytest.mark.parametrize("updates_multiple", [2], indirect=True)
     def test_match_not_reset_if_threshold_matched(self, default_config, default_thresholds, updates_multiple):
         """Test that match is set if a threshold is matched."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
-        updates.evaluate(available_updates=updates_multiple)
+        updates.evaluate(criteria=BUILTIN_CRITERIA, available_updates=updates_multiple)
         assert updates.match is not None
         assert updates.match.score <= updates.score
 
@@ -175,9 +176,9 @@ class TestUpdates:
     def test_match_reset_on_score_drop(self, default_config, default_thresholds, updates_multiple):
         """Test that match is reset if score drops below all thresholds after being previously set."""
         updates = Updates(thresholds=default_thresholds, criteria_settings=default_config.v2_criteria)
-        updates.evaluate(available_updates=updates_multiple)
+        updates.evaluate(criteria=BUILTIN_CRITERIA, available_updates=updates_multiple)
         assert updates.match is not None
-        updates.evaluate(available_updates=[])
+        updates.evaluate(criteria=BUILTIN_CRITERIA, available_updates=[])
         assert updates.score == 0
         assert updates.match is None
 
@@ -196,7 +197,7 @@ class TestCustomCriteria:
         """
         with Path.open(include_path / Path("test_criterion.py"), "w+") as criterion_file:
             criterion_file.write(criterion_content)
-        user_criteria = load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
+        user_criteria = _load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
         assert user_criteria
         assert "test_criterion" in user_criteria
 
@@ -211,7 +212,7 @@ class TestCustomCriteria:
         """
         with Path.open(include_path / Path("test_criterion.py"), "w+") as criterion_file:
             criterion_file.write(criterion_content)
-        user_criteria = load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
+        user_criteria = _load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
         assert isinstance(user_criteria, dict)
         assert "test_criterion" not in user_criteria
 
@@ -228,7 +229,7 @@ class TestCustomCriteria:
             assert get_default_criteria_dir() == Path("/tmp/siun-tests/no_config_home/.config/siun/criteria")  # noqa: S108
 
     def test_load_user_criteria_world_writable_dir(self, tmp_path):
-        """Test load_user_criteria exception if criteria dir is world-writable."""
+        """Test _load_user_criteria exception if criteria dir is world-writable."""
         criteria_settings = [CriterionCustom(name="test_criterion", weight=1)]
         include_path = tmp_path / "criteria"
         include_path.mkdir()
@@ -245,5 +246,5 @@ class TestCustomCriteria:
             assert include_path.exists()
             assert include_path.is_dir()
             with pytest.raises(ImportError) as excinfo:
-                load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
+                _load_user_criteria(criteria_settings=criteria_settings, include_path=include_path)
             assert "world-writable" in str(excinfo.value)

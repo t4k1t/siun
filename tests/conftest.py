@@ -7,9 +7,26 @@ from unittest import mock
 import pytest
 
 from siun.config import SiunConfig, get_default_thresholds
-from siun.models import CriterionAvailable, CriterionCount, CriterionPattern, PackageUpdate, V2Threshold
+from siun.models import (
+    CriterionAvailable,
+    CriterionCount,
+    CriterionPattern,
+    FormatObject,
+    PackageUpdate,
+    Updates,
+    V2Threshold,
+)
 from siun.providers import UpdateProvider, UpdateProviderPacman
-from siun.state import FormatObject, Updates
+
+
+class DummyProvider(UpdateProvider):
+    """Dummy provider for testing."""
+
+    name: str = "dummy"
+
+    def fetch_updates(self):
+        """Return dummy updates."""
+        return []
 
 
 @pytest.fixture(scope="module")

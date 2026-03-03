@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionPattern, SiunCriterion
+from siun.errors import CriterionError
 from siun.models import PackageUpdate, V2Criterion
 from siun.models.updates import Updates
 from siun.providers import UpdateProvider
@@ -83,8 +84,11 @@ def get_package_updates(update_providers: list[UpdateProvider]) -> list[PackageU
 
 def get_merged_criteria(criteria_settings: list[V2Criterion]) -> dict[str, SiunCriterion]:
     """Return merged built-in and user criteria."""
-    criteria = BUILTIN_CRITERIA.copy()
-    user_criteria = _load_user_criteria(criteria_settings=criteria_settings)
-    criteria.update(user_criteria)
+    try:
+        criteria = BUILTIN_CRITERIA.copy()
+        user_criteria = _load_user_criteria(criteria_settings=criteria_settings)
+        criteria.update(user_criteria)
+    except Exception as error:
+        raise CriterionError(f"Error loading criteria: {error}", None) from error
 
     return criteria

@@ -5,8 +5,8 @@ from unittest import mock
 import pytest
 from pydantic import ValidationError
 
+from siun.models import FormatObject
 from siun.notification import NotificationUrgency, UpdateNotification
-from siun.state import FormatObject
 
 
 class TestNotification:

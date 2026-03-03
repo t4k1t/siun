@@ -10,9 +10,9 @@ import pytest
 from click.testing import CliRunner
 
 from siun.cli import _get_updates, check
-from siun.errors import ConfigError, UpdateProviderError
+from siun.errors import ConfigError, SiunGetUpdatesError
 from siun.models import CriterionAvailable, CriterionCount, PackageUpdate
-from siun.state import Updates
+from siun.state import UpdateProvider, Updates
 
 EMPTY_STATE = Updates(
     available_updates=[],
@@ -182,8 +182,8 @@ class TestCheckCommand:
     @mock.patch("siun.cli.Updates.persist_state")
     @mock.patch("siun.cli.load_state")
     @mock.patch(
-        "siun.providers.UpdateProviderPacman.fetch_updates",
-        side_effect=UpdateProviderError("Permission denied", "pacman"),
+        "siun.cli._get_updates",
+        side_effect=SiunGetUpdatesError("[pacman] Permission denied"),
     )
     @mock.patch("siun.cli_utils.get_config")
     def test_check_with_error_onfetch_available_updates(
@@ -205,7 +205,7 @@ class TestCheckCommand:
         mockfetch_available_updates.assert_called_once()
         assert result.exit_code == 1
         assert result.stdout == ""
-        assert result.stderr == "Error: failed to query available updates: Permission denied\n"
+        assert result.stderr == "Error: [pacman] Permission denied\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
     @mock.patch("siun.cli.load_state")
@@ -261,8 +261,7 @@ class TestCheckCommand:
 
     @mock.patch("siun.cli.Updates.persist_state")
     @mock.patch("siun.cli.load_state", return_value=False)
-    @mock.patch("siun.cli.update_state_with_available_packages", return_value=False)
-    def test__get_updates_without_cache_or_update(self, mock__update_state, mock_read_state, mock_persist_state):
+    def test__get_updates_without_cache_or_update(self, mock_read_state, mock_persist_state):
         """
         Test _get_updates with no_cache and no_update.
 
@@ -275,21 +274,17 @@ class TestCheckCommand:
             no_update=True,
             criteria=[],
             thresholds=[],
-            update_providers=["dummy"],
+            update_providers=[UpdateProvider(name="dummy")],
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
         )
-        mock__update_state.assert_not_called()
         mock_read_state.assert_not_called()
         mock_persist_state.assert_not_called()
         assert result.score == 0
 
     @mock.patch("siun.cli.Updates.persist_state")
     @mock.patch("siun.cli.load_state")
-    @mock.patch("siun.cli.update_state_with_available_packages", return_value=False)
-    def test__get_updates_with_no_update_and_existing_cache(
-        self, mock__update_state, mock_read_state, mock_persist_state
-    ):
+    def test__get_updates_with_no_update_and_existing_cache(self, mock_read_state, mock_persist_state):
         """Test _get_updates with no_update."""
         config_criteria = [
             CriterionAvailable(name="available", weight=1),
@@ -309,11 +304,10 @@ class TestCheckCommand:
             no_update=True,
             criteria=config_criteria,
             thresholds=[],
-            update_providers=["dummy"],
+            update_providers=[UpdateProvider(name="dummy")],
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
         )
-        mock__update_state.assert_not_called()
         mock_read_state.assert_called_once()
         mock_persist_state.assert_not_called()
         assert result.available_updates == [PackageUpdate(name="siun", provider="pacman")]
