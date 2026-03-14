@@ -1,22 +1,21 @@
 """CLI commands for siun."""
 
-import datetime
 from collections import defaultdict
 from pathlib import Path
 
 import click
 
 from siun import __version__
+from siun.check import get_updates
 from siun.cli_utils import common_options, load_config_or_exit
 from siun.config import SiunConfig
 from siun.errors import (
     SiunCLIError,
     SiunGetUpdatesError,
     SiunNotificationError,
-    SiunStateUpdateError,
 )
-from siun.formatting import Formatter, OutputFormat
-from siun.models import FormatObject, NewsEntry, V2Criterion, V2Threshold
+from siun.formatting import OutputFormat, get_formatted_state_text
+from siun.models import NewsEntry
 from siun.models.updates import Updates
 from siun.news import INSTALLED_FEATURES as INSTALLED_NEWS_FEATURES
 from siun.news import (
@@ -26,87 +25,9 @@ from siun.news import (
     save_news_state,
 )
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
-from siun.providers import UpdateProvider
-from siun.state import get_merged_criteria, get_package_updates, load_state
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES | INSTALLED_NEWS_FEATURES
-
-
-def get_formatted_state_text(format_object: FormatObject, output_format: OutputFormat, custom_format: str) -> str:
-    """Generate formatted output text from update state."""
-    formatter = Formatter()
-    formatter_kwargs = {}
-    if output_format == OutputFormat.CUSTOM:
-        formatter_kwargs["template_string"] = custom_format
-    formatted_output, format_options = getattr(formatter, f"format_{output_format.value}")(
-        format_object, **formatter_kwargs
-    )
-    return click.style(formatted_output, **format_options)
-
-
-def _get_updates(
-    *,
-    no_cache: bool,
-    no_update: bool,
-    criteria: list[V2Criterion],
-    thresholds: list[V2Threshold],
-    cache_min_age_minutes: int,
-    state_file_path: Path,
-    update_providers: list[UpdateProvider],
-) -> Updates:
-    siun_state = Updates(criteria_settings=criteria, thresholds=thresholds)
-
-    criteria_dict = get_merged_criteria(criteria_settings=criteria)
-
-    if no_cache:
-        if no_update:
-            return siun_state
-        try:
-            siun_state.evaluate(criteria_dict, available_updates=get_package_updates(update_providers))
-        except SiunStateUpdateError as error:
-            raise SiunGetUpdatesError(error.message) from error
-        return siun_state
-
-    now = datetime.datetime.now(tz=datetime.UTC)
-    cache_min_age = datetime.timedelta(minutes=cache_min_age_minutes)
-    existing_state = load_state(state_file_path)
-    is_stale = existing_state and existing_state.last_update < (now - cache_min_age)
-    needs_update = False
-
-    if existing_state:
-        siun_state = existing_state
-        siun_state.last_match = siun_state.match
-        siun_state.thresholds = thresholds
-        siun_state.criteria_settings = criteria
-        try:
-            siun_state.evaluate(criteria_dict, available_updates=existing_state.available_updates)
-        except SiunStateUpdateError as error:
-            raise SiunGetUpdatesError(error.message) from error
-        if siun_state.last_match != siun_state.match:
-            needs_update = True
-
-    if no_update:
-        return siun_state
-
-    if not existing_state or is_stale:
-        try:
-            siun_state.evaluate(criteria_dict, available_updates=get_package_updates(update_providers))
-        except SiunStateUpdateError as error:
-            raise SiunGetUpdatesError(error.message) from error
-        try:
-            siun_state.persist_state(state_file_path)
-        except Exception as error:
-            message = f"failed to write state to disk: {error}"
-            raise SiunGetUpdatesError(message) from error
-    elif needs_update:
-        try:
-            siun_state.persist_state(state_file_path)
-        except Exception as error:
-            message = f"failed to write state to disk: {error}"
-            raise SiunGetUpdatesError(message) from error
-
-    return siun_state
 
 
 def _handle_notification(config: SiunConfig, siun_state: Updates) -> None:
@@ -184,7 +105,7 @@ def check(*, config_path: Path, output_format: OutputFormat, cache: bool, no_upd
 
     config = load_config_or_exit(config_path)
     try:
-        siun_state = _get_updates(
+        siun_state = get_updates(
             no_cache=not cache,
             no_update=no_update,
             criteria=config.v2_criteria,

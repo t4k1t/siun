@@ -5,6 +5,8 @@ from enum import Enum
 from string import Template
 from typing import Never
 
+from click import style as click_style
+
 from siun.models import FormatObject
 
 
@@ -46,3 +48,15 @@ class Formatter:
         format_template = Template(template_string)
         output = format_template.safe_substitute(**format_object.model_dump())
         return output, {}
+
+
+def get_formatted_state_text(format_object: FormatObject, output_format: OutputFormat, custom_format: str) -> str:
+    """Generate formatted output text from update state."""
+    formatter = Formatter()
+    formatter_kwargs = {}
+    if output_format == OutputFormat.CUSTOM:
+        formatter_kwargs["template_string"] = custom_format
+    formatted_output, format_options = getattr(formatter, f"format_{output_format.value}")(
+        format_object, **formatter_kwargs
+    )
+    return click_style(formatted_output, **format_options)
