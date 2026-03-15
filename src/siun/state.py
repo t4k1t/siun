@@ -89,6 +89,7 @@ def get_merged_criteria(criteria_settings: list[V2Criterion]) -> dict[str, SiunC
         user_criteria = _load_user_criteria(criteria_settings=criteria_settings)
         criteria.update(user_criteria)
     except Exception as error:
-        raise CriterionError(f"Error loading criteria: {error}", None) from error
+        message = f"Error loading criteria: {error}"
+        raise CriterionError(message, None) from error
 
     return criteria
