@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 from unittest import mock
 
-import feedparser
 import pytest
 from click.testing import CliRunner
 
@@ -45,6 +44,8 @@ class TestNewsCommand:
     @mock.patch("siun.cli.save_news_state")
     def test_news_command(self, mock_save_news_state, mock_get_config):
         """Test news CLI command with one source."""
+        import feedparser
+
         dummy_news_source = [mock.Mock(url="dummy-url", title=None, max_items=3)]
         dummy_config = mock.Mock()
         dummy_config.news = dummy_news_source
@@ -110,6 +111,8 @@ class TestNewsCommand:
     @mock.patch("siun.cli_utils.get_config")
     def test_news_command_empty_feed(self, mock_get_config):
         """Test news CLI command with a feed that returns no entries."""
+        import feedparser
+
         dummy_news_source = [
             NewsProvider(
                 url="/tmp/siun-tests/dummy-feed.xml",  # noqa: S108
@@ -139,6 +142,8 @@ class TestNewsCommand:
     @mock.patch("siun.cli.load_news_state")
     def test_news_command_nocolor(self, mock_load_news_state, mock_save_news_state, mock_get_config):
         """Test news CLI command with --nocolor option."""
+        import feedparser
+
         dummy_news_source = [mock.Mock(url="dummy-url", title=None, max_items=1)]
         dummy_config = mock.Mock()
         dummy_config.news = dummy_news_source

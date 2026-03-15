@@ -344,6 +344,7 @@ class TestCheckCommand:
         assert result.exit_code == 0
         assert result.output == "Updates available\n"
 
+    @pytest.mark.feature_notification
     @mock.patch("siun.cli.Updates.persist_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
