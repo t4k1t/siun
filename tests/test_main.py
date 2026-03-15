@@ -6,7 +6,8 @@ from unittest import mock
 
 import pytest
 
-from siun.cli import _get_updates, _handle_notification
+from siun.check import get_updates
+from siun.cli import _handle_notification
 from siun.errors import SiunNotificationError
 from siun.models import CriterionAvailable, CriterionCount
 from siun.providers import UpdateProvider
@@ -48,7 +49,7 @@ class TestMain:
         notification.show.assert_not_called()
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     def test_existing_state_sets_required_fields(
         self, mock_load_state, mock_persist_state, v2_config_w_custom_format, updates_single
     ):
@@ -67,7 +68,7 @@ class TestMain:
             CriterionCount(name="count", weight=2, count=1),
         ]
 
-        result = _get_updates(
+        result = get_updates(
             no_cache=False,
             no_update=True,
             update_providers=[UpdateProvider(name="dummy")],
@@ -81,9 +82,12 @@ class TestMain:
         assert result.thresholds == v2_config_w_custom_format.v2_thresholds
         assert result.available_updates == [updates_single]
 
+    @mock.patch("siun.check.get_package_updates", return_value=[])
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
-    def test__get_updates_persist_state_on_match_change(self, mock_load_state, mock_persist_state, default_thresholds):
+    @mock.patch("siun.check.load_state")
+    def test_get_updates_persist_state_on_match_change(
+        self, mock_load_state, mock_persist_state, mock_get_package_updates, default_thresholds
+    ):
         """Test persist_state called when last_match != match."""
         threshold1 = default_thresholds[0]
         threshold2 = default_thresholds[-1]
@@ -103,7 +107,7 @@ class TestMain:
             )
             mock_load_state.return_value = state
 
-            _get_updates(
+            get_updates(
                 no_cache=False,
                 no_update=False,
                 update_providers=[UpdateProvider(name="dummy")],
@@ -115,10 +119,11 @@ class TestMain:
 
         mock_persist_state.assert_called_once()
 
+    @mock.patch("siun.check.get_package_updates", return_value=[])
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
-    def test__get_updates_no_persist_state_when_match_unchanged(
-        self, mock_load_state, mock_persist_state, default_thresholds
+    @mock.patch("siun.check.load_state")
+    def test_get_updates_no_persist_state_when_match_unchanged(
+        self, mock_load_state, mock_persist_state, mock_get_package_updates, default_thresholds
     ):
         """Test persist_state not called when last_match == match."""
         threshold = default_thresholds[0]
@@ -138,7 +143,7 @@ class TestMain:
             )
             mock_load_state.return_value = state
 
-            _get_updates(
+            get_updates(
                 no_cache=False,
                 no_update=False,
                 update_providers=[UpdateProvider(name="dummy")],

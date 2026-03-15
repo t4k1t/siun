@@ -42,8 +42,8 @@ class TestNewsCommand:
     @pytest.mark.feature_news
     @pytest.mark.usefixtures("os_path_isfile_patch")
     @mock.patch("siun.cli_utils.get_config")
-    @mock.patch("siun.cli._write_last_news_update")
-    def test_news_command(self, mock_write_last_news_update, mock_get_config):
+    @mock.patch("siun.cli.save_news_state")
+    def test_news_command(self, mock_save_news_state, mock_get_config):
         """Test news CLI command with one source."""
         dummy_news_source = [mock.Mock(url="dummy-url", title=None, max_items=3)]
         dummy_config = mock.Mock()
@@ -135,8 +135,9 @@ class TestNewsCommand:
 
     @pytest.mark.feature_news
     @mock.patch("siun.cli_utils.get_config")
-    @mock.patch("siun.cli._write_last_news_update")
-    def test_news_command_nocolor(self, mock_write_last_news_update, mock_get_config):
+    @mock.patch("siun.cli.save_news_state")
+    @mock.patch("siun.cli.load_news_state")
+    def test_news_command_nocolor(self, mock_load_news_state, mock_save_news_state, mock_get_config):
         """Test news CLI command with --nocolor option."""
         dummy_news_source = [mock.Mock(url="dummy-url", title=None, max_items=1)]
         dummy_config = mock.Mock()

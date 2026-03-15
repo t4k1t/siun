@@ -9,7 +9,7 @@ from unittest import mock
 import pytest
 from click.testing import CliRunner
 
-from siun.cli import _get_updates, check
+from siun.cli import check, get_updates
 from siun.errors import ConfigError, SiunGetUpdatesError
 from siun.models import CriterionAvailable, CriterionCount, PackageUpdate
 from siun.state import UpdateProvider, Updates
@@ -30,7 +30,7 @@ class TestCheckCommand:
     """Test check command."""
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[],
@@ -50,7 +50,7 @@ class TestCheckCommand:
         assert result.output == "No matches.\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[],
@@ -72,7 +72,7 @@ class TestCheckCommand:
         assert result.output == "No matches.\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[],
@@ -92,7 +92,7 @@ class TestCheckCommand:
         assert result.output == "Error: --no-update and --no-cache options are mutually exclusive\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[],
@@ -112,7 +112,7 @@ class TestCheckCommand:
         assert result.output == ""
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[],
@@ -133,7 +133,7 @@ class TestCheckCommand:
         assert result.output == "No matches.\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[],
@@ -153,7 +153,7 @@ class TestCheckCommand:
         assert result.output == "Error: failed; config path: /path/to/siun.toml\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[PackageUpdate(name="package", provider="pacman")],
@@ -180,9 +180,9 @@ class TestCheckCommand:
         assert result.output == "Updates available\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
-        "siun.cli._get_updates",
+        "siun.cli.get_updates",
         side_effect=SiunGetUpdatesError("[pacman] Permission denied"),
     )
     @mock.patch("siun.cli_utils.get_config")
@@ -208,7 +208,7 @@ class TestCheckCommand:
         assert result.stderr == "Error: [pacman] Permission denied\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[PackageUpdate(name="package", provider="pacman")],
@@ -235,7 +235,7 @@ class TestCheckCommand:
         assert result.output == "Updates available: package\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state", return_value=False)
+    @mock.patch("siun.check.load_state", return_value=False)
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[PackageUpdate(name="package", provider="pacman")],
@@ -260,16 +260,16 @@ class TestCheckCommand:
         assert result.output == "Updates available\n"
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state", return_value=False)
-    def test__get_updates_without_cache_or_update(self, mock_read_state, mock_persist_state):
+    @mock.patch("siun.check.load_state", return_value=False)
+    def test_get_updates_without_cache_or_update(self, mock_read_state, mock_persist_state):
         """
-        Test _get_updates with no_cache and no_update.
+        Test get_updates with no_cache and no_update.
 
         The CLI should already catch that no_cache and no_update are mutually
         exclusive, but the code shouldn't fail anyway.
         """
         mock_read_state.return_value = False
-        result = _get_updates(
+        result = get_updates(
             no_cache=True,
             no_update=True,
             criteria=[],
@@ -283,9 +283,9 @@ class TestCheckCommand:
         assert result.score == 0
 
     @mock.patch("siun.cli.Updates.persist_state")
-    @mock.patch("siun.cli.load_state")
-    def test__get_updates_with_no_update_and_existing_cache(self, mock_read_state, mock_persist_state):
-        """Test _get_updates with no_update."""
+    @mock.patch("siun.check.load_state")
+    def test_get_updates_with_no_update_and_existing_cache(self, mock_read_state, mock_persist_state):
+        """Test get_updates with no_update."""
         config_criteria = [
             CriterionAvailable(name="available", weight=1),
             CriterionCount(name="count", weight=2, count=1),
@@ -299,7 +299,7 @@ class TestCheckCommand:
             criteria_settings=[],
         )
         mock_read_state.return_value = existing_state
-        result = _get_updates(
+        result = get_updates(
             no_cache=False,
             no_update=True,
             criteria=config_criteria,
@@ -349,7 +349,7 @@ class TestCheckCommand:
         "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[PackageUpdate(name="siun", provider="pacman")],
     )
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch("siun.notification.UpdateNotification.show")
     @mock.patch("siun.cli_utils.get_config")
     def test_check_notification_below_threshold(
@@ -381,7 +381,7 @@ class TestCheckCommand:
             PackageUpdate(name="other_package", provider="pacman"),
         ],
     )
-    @mock.patch("siun.cli.load_state")
+    @mock.patch("siun.check.load_state")
     @mock.patch("siun.notification.UpdateNotification.show")
     @mock.patch("siun.cli_utils.get_config")
     def test_check_notification_above_threshold(

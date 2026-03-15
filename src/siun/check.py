@@ -54,7 +54,12 @@ def get_updates(
         _evaluate_state(state, criteria_dict, get_package_updates(update_providers))
         return state
 
-    existing_state = load_state(state_file_path)
+    try:
+        existing_state = load_state(state_file_path)
+    except Exception as error:
+        message = f"failed to load state from disk: {error}"
+        raise SiunGetUpdatesError(message) from error
+
     should_update_cache = not existing_state or _is_cache_stale(existing_state, now, cache_min_age)
     needs_update = False
 
