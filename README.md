@@ -87,8 +87,7 @@ If you are upgrading from any version **≤ 1.5.1**, you must update your config
 
 ### Why the Change?
 
-The new format introduces `v2_thresholds` and `v2_criteria` for better flexibility and future-proofing.  
-Old fields (`thresholds`, `criteria`) are no longer supported.
+The new format introduces multiple new configuration fields for better flexibility and future-proofing. E.g. the new `update_providers` field allows setting up multiple sources for package updates instead of only one.
 
 ### What Changed?
 
