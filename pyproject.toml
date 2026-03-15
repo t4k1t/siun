@@ -105,4 +105,4 @@ markers = [
 
 [tool.coverage.run]
 source = ["src/siun"]
-omit = ["src/siun/__main__.py"]
+omit = ["src/siun/__main__.py", "src/siun/main.py", "*/__init__.py"]
