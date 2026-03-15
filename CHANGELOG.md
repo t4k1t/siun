@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added update providers for easier (and slightly more secure) setup.
 - Added `news` subcommand.
 - Added permission check for config file
+- Added Python 3.14 to supported versions
 
 ### Changed
 
