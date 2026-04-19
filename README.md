@@ -252,6 +252,10 @@ In order to automatically clear `siun`'s cache when packages get updated, it's p
 
 `siun` checks a configurable list of criteria to determine how urgent updates are. Each criterion is defined in the `[[v2_criteria]]` section of your config file, specifying its type (`name`), parameters, and a `weight` that contributes to the total urgency `score`. The combined score from all matched criteria is then compared against your configured thresholds to determine the update status.
 
+Setting the `weight` of a criterion to `0` will disable it. Disabled criteria do not get executed.
+
+> ℹ️ Criteria can also be configured with a negative weight. As you might've alreay guessed, negative weigths will get subtracted from the urgency score.
+
 ### Built-in Criteria
 
 The following criteria are built-in:
