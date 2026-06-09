@@ -4,6 +4,7 @@ from .criteria import CriterionAvailable as CriterionAvailable
 from .criteria import CriterionCount as CriterionCount
 from .criteria import CriterionCustom as CriterionCustom
 from .criteria import CriterionPattern as CriterionPattern
+from .criteria import CriterionT as CriterionT
 from .criteria import V2Criterion as V2Criterion
 from .formatting import ClickColor as ClickColor
 from .formatting import FormatObject as FormatObject

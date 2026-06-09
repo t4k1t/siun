@@ -11,7 +11,7 @@ from siun.cli import _handle_notification
 from siun.errors import SiunNotificationError
 from siun.models import CriterionAvailable, CriterionCount
 from siun.providers import UpdateProvider
-from siun.state import Updates
+from siun.state import Updates, get_merged_criteria
 
 
 class TestMain:
@@ -67,6 +67,7 @@ class TestMain:
             CriterionAvailable(name="available", weight=1),
             CriterionCount(name="count", weight=2, count=1),
         ]
+        criteria_dict = get_merged_criteria(criteria_settings=config_criteria)
 
         result = get_updates(
             no_cache=False,
@@ -76,6 +77,7 @@ class TestMain:
             thresholds=v2_config_w_custom_format.v2_thresholds,
             cache_min_age_minutes=10,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+            criteria_dict=criteria_dict,
         )
 
         assert result.criteria_settings == config_criteria
@@ -115,6 +117,7 @@ class TestMain:
                 thresholds=[threshold1, threshold2],
                 cache_min_age_minutes=10,
                 state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+                criteria_dict={threshold1.name: threshold1, threshold2.name: threshold2},
             )
 
         mock_persist_state.assert_called_once()
@@ -151,6 +154,7 @@ class TestMain:
                 thresholds=[threshold],
                 cache_min_age_minutes=10,
                 state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+                criteria_dict={threshold.name: threshold},
             )
 
         mock_persist_state.assert_not_called()

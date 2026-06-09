@@ -7,7 +7,7 @@ import click
 
 from siun import __version__
 from siun.check import get_updates
-from siun.cli_utils import common_options, load_config_or_exit
+from siun.cli_utils import common_options, load_config_or_exit, print_criteria
 from siun.config import SiunConfig
 from siun.errors import (
     SiunCLIError,
@@ -15,7 +15,7 @@ from siun.errors import (
     SiunNotificationError,
 )
 from siun.formatting import OutputFormat, get_formatted_state_text
-from siun.models import NewsEntry
+from siun.models import CRITERION_REGISTRY, NewsEntry
 from siun.models.updates import Updates
 from siun.news import INSTALLED_FEATURES as INSTALLED_NEWS_FEATURES
 from siun.news import (
@@ -25,6 +25,7 @@ from siun.news import (
     save_news_state,
 )
 from siun.notification import INSTALLED_FEATURES as INSTALLED_NOTIFICATION_FEATURES
+from siun.state import get_merged_criteria
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 INSTALLED_FEATURES: set[str] = INSTALLED_NOTIFICATION_FEATURES | INSTALLED_NEWS_FEATURES
@@ -87,6 +88,9 @@ def news(*, config_path: Path, nocolor: bool) -> None:
 @cli.command()
 @click.option("--quiet", "-q", is_flag=True, show_default=True, default=False, help="Suppress output.")
 @click.option(
+    "--list-criteria", is_flag=True, show_default=True, default=False, help="List available criteria and exit."
+)
+@click.option(
     "--no-update", "-U", is_flag=True, show_default=True, default=False, help="Don't get updates, only check."
 )
 @click.option("--cache/--no-cache", " /-n", show_default=True, default=True, help="Ignore existing state on disk.")
@@ -98,12 +102,20 @@ def news(*, config_path: Path, nocolor: bool) -> None:
     help="Pick output format for update check.",
 )
 @common_options
-def check(*, config_path: Path, output_format: OutputFormat, cache: bool, no_update: bool, quiet: bool) -> None:
+def check(
+    *, config_path: Path, output_format: OutputFormat, cache: bool, no_update: bool, list_criteria: bool, quiet: bool
+) -> None:
     """Check for urgency of available updates."""
     if no_update and not cache:
         raise SiunCLIError(message="--no-update and --no-cache options are mutually exclusive")
 
     config = load_config_or_exit(config_path)
+    criteria_dict = get_merged_criteria(criteria_settings=config.v2_criteria)
+
+    if list_criteria:
+        print_criteria(criteria=criteria_dict, registry=CRITERION_REGISTRY, criteria_config=config.v2_criteria)
+        raise SystemExit(0)
+
     try:
         siun_state = get_updates(
             no_cache=not cache,
@@ -113,6 +125,7 @@ def check(*, config_path: Path, output_format: OutputFormat, cache: bool, no_upd
             cache_min_age_minutes=config.cache_min_age_minutes,
             state_file_path=config.state_dir / Path("state.json"),
             update_providers=config.update_providers,
+            criteria_dict=criteria_dict,
         )
     except SiunGetUpdatesError as error:
         raise SiunCLIError(error.message) from error

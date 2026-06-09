@@ -3,6 +3,7 @@
 import datetime
 from pathlib import Path
 
+from siun.criteria import SiunCriterion
 from siun.errors import (
     SiunGetUpdatesError,
     SiunStateUpdateError,
@@ -10,7 +11,7 @@ from siun.errors import (
 from siun.models import V2Criterion, V2Threshold
 from siun.models.updates import Updates
 from siun.providers import UpdateProvider
-from siun.state import get_merged_criteria, get_package_updates, load_state
+from siun.state import get_package_updates, load_state
 
 
 def _is_cache_stale(existing_state, now, min_age):
@@ -41,11 +42,11 @@ def get_updates(
     cache_min_age_minutes: int,
     state_file_path: Path,
     update_providers: list[UpdateProvider],
+    criteria_dict: dict[str, SiunCriterion],
 ) -> Updates:
     """Get available updates and evaluate criteria."""
     now = datetime.datetime.now(tz=datetime.UTC)
     cache_min_age = datetime.timedelta(minutes=cache_min_age_minutes)
-    criteria_dict = get_merged_criteria(criteria_settings=criteria)
 
     if no_cache:
         state = Updates(criteria_settings=criteria, thresholds=thresholds)

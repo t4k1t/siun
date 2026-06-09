@@ -12,7 +12,7 @@ from click.testing import CliRunner
 from siun.cli import check, get_updates
 from siun.errors import ConfigError, SiunGetUpdatesError
 from siun.models import CriterionAvailable, CriterionCount, PackageUpdate
-from siun.state import UpdateProvider, Updates
+from siun.state import UpdateProvider, Updates, get_merged_criteria
 
 EMPTY_STATE = Updates(
     available_updates=[],
@@ -22,6 +22,21 @@ EMPTY_STATE = Updates(
 
 CONFIG_CUSTOM_STATE_FILE_PATH = """
 state_dir = "/tmp/siun-test-state"
+"""
+
+DEFAULT_LIST_CRITERIA_OUTPUT = """Configured criteria:
+  KIND      NAME       OVERRIDES BUILTIN   CONFIG
+  -------   ---------  -----------------   -------------------------------------------------------
+  builtin   available                      {"name": "available", "short_name": null, "weight": 1, "name_short": "av"}
+  builtin   count                          {"name": "count", "short_name": null, "weight": 1, "count": 15, "name_short": "co"}
+  builtin   pattern                        {"name": "pattern", "short_name": null, "weight": 1, "pattern": "^archlinux-keyring$|^linux$|^pacman.*$", "name_short": "pa"}
+
+Available criteria:
+  archaudit
+  available
+  count
+  custom
+  pattern
 """
 
 
@@ -277,6 +292,7 @@ class TestCheckCommand:
             update_providers=[UpdateProvider(name="dummy")],
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+            criteria_dict={},
         )
         mock_read_state.assert_not_called()
         mock_persist_state.assert_not_called()
@@ -290,6 +306,7 @@ class TestCheckCommand:
             CriterionAvailable(name="available", weight=1),
             CriterionCount(name="count", weight=2, count=1),
         ]
+        criteria_dict = get_merged_criteria(criteria_settings=config_criteria)
         existing_state = Updates(
             last_update="1970-01-01T01:00:00Z",
             state="OK",
@@ -307,6 +324,7 @@ class TestCheckCommand:
             update_providers=[UpdateProvider(name="dummy")],
             cache_min_age_minutes=0,
             state_file_path=Path("/tmp/siun-test-state.json"),  # noqa: S108
+            criteria_dict=criteria_dict,
         )
         mock_read_state.assert_called_once()
         mock_persist_state.assert_not_called()
@@ -405,3 +423,23 @@ class TestCheckCommand:
         mock_show.assert_called_once()
         assert result.exit_code == 0
         assert result.output == "Updates recommended\n"
+
+    @mock.patch("siun.cli.Updates.persist_state")
+    @mock.patch("siun.check.load_state")
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[],
+    )
+    @mock.patch("siun.cli_utils.get_config")
+    def test_check_list_criteria(
+        self, mock_get_config, mock_fetch_available_updates, mock_read_state, mock_persist_state, default_config
+    ):
+        """Test check CLI command --list-criteria option."""
+        mock_get_config.return_value = default_config
+        runner = CliRunner()
+        result = runner.invoke(check, ["--list-criteria"])
+        mock_read_state.assert_not_called()
+        mock_persist_state.assert_not_called()
+        mock_fetch_available_updates.assert_not_called()
+        assert result.exit_code == 0
+        assert result.output == DEFAULT_LIST_CRITERIA_OUTPUT

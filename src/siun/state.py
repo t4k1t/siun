@@ -7,7 +7,7 @@ from typing import Any
 
 from siun.criteria import CriterionAvailable, CriterionCount, CriterionPattern, SiunCriterion
 from siun.errors import CriterionError
-from siun.models import PackageUpdate, V2Criterion
+from siun.models import CriterionT, PackageUpdate
 from siun.models.updates import Updates
 from siun.providers import UpdateProvider
 from siun.util import get_default_criteria_dir, is_path_world_writable
@@ -22,7 +22,7 @@ EXPECTED_CLASS = "SiunCriterion"
 Updates.model_rebuild()
 
 
-def _load_user_criteria(*, criteria_settings: list[V2Criterion], include_path: Path | None = None) -> dict[str, Any]:
+def _load_user_criteria(*, criteria_settings: list[CriterionT], include_path: Path | None = None) -> dict[str, Any]:
     """Load user criteria."""
     user_criteria: dict[str, SiunCriterion] = {}
     if not include_path:
@@ -82,7 +82,7 @@ def get_package_updates(update_providers: list[UpdateProvider]) -> list[PackageU
     return package_updates
 
 
-def get_merged_criteria(criteria_settings: list[V2Criterion]) -> dict[str, SiunCriterion]:
+def get_merged_criteria(criteria_settings: list[CriterionT]) -> dict[str, SiunCriterion]:
     """Return merged built-in and user criteria."""
     try:
         criteria = BUILTIN_CRITERIA.copy()

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from typing import TypeVar
+
+from pydantic import BaseModel, ConfigDict, computed_field
 
 CRITERION_REGISTRY: dict[str, type[V2Criterion]] = {}
 
@@ -11,8 +13,9 @@ class V2Criterion(BaseModel):
     """Version 2 of the Criterion struct."""
 
     name: str
-    short_name: str | None = Field(default=None)
+    short_name: str | None = None
     weight: int
+    is_custom: bool = False
 
     model_config = ConfigDict(extra="allow")
 
@@ -83,3 +86,6 @@ class CriterionCustom(V2Criterion):
 
     name: str = "custom"
     model_config = ConfigDict(extra="allow")
+
+
+CriterionT = TypeVar("CriterionT", bound=V2Criterion)
