@@ -2,8 +2,8 @@ alias cov := coverage
 alias ta := testall
 
 # Run unit tests with coverage generation
-@test:
-    uv run coverage run -m pytest -m "not feature_notification and not feature_news"
+@test *FLAGS:
+    uv run coverage run -m pytest -m "not feature_notification and not feature_news" {{FLAGS}}
 
 # Run unit tests, including optional features with coverage generation
 @testall:
