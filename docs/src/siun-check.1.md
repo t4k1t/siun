@@ -31,6 +31,9 @@ Fetch list of available updates, apply configured criteria and print calculated 
 **-U**, **\--no-update**
 : Don't fetch available updates, only check.
 
+**--list-criteria**
+: Print all configured and available criteria settings instead of running any checks.
+
 **-q**, **\--quiet**
 : Suppress output.
 
