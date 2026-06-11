@@ -44,7 +44,6 @@ def print_criteria(
     registry: dict[str, type[V2Criterion]],
 ) -> None:
     """Print available criteria from config and registry."""
-    # TODO: Write tests
     # TODO: Future: Replace `custom` in available criteria with available custom criteria on disk
     all_names = set(criteria) | set(registry)
     max_name_len = max((len(name) for name in all_names), default=0)
