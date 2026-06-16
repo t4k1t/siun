@@ -1,6 +1,7 @@
 """Criteria module."""
 
 import re
+import subprocess
 from typing import Any
 
 
@@ -38,3 +39,19 @@ class CriterionPattern(SiunCriterion):
         matches = list(filter(regex.match, available_updates))
 
         return bool(matches)
+
+
+class CriterionArchaudit(SiunCriterion):
+    """Check if any available updates are in arch-audit list."""
+
+    def is_fulfilled(self, criteria_settings: dict[str, Any], available_updates: list[str]):
+        """Check criterion."""
+        arch_audit_run = subprocess.run(
+            ["/usr/bin/arch-audit", "-q", "-u"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        audit_packages = arch_audit_run.stdout.splitlines()
+
+        return bool(set(available_updates) & set(audit_packages))
