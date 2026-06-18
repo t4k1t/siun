@@ -1,6 +1,7 @@
 """CLI utils."""
 
 import json
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -73,3 +74,36 @@ def print_criteria(
     click.echo("\nAvailable criteria:")
     for name in sorted(registry):
         click.echo(f"  {name}")
+
+
+def guess_package_manager():
+    """Guess the package manager based on distro information and available binaries."""
+    # TODO: Extend + sort by popularity and usage frequency
+    distro_pm = {
+        "arch": ["pacman", "paru", "yay"],
+        "manjaro": ["pacman", "paru", "yay"],
+        "ubuntu": ["apt"],
+        "debian": ["apt"],
+        "fedora": ["dnf", "yum"],
+        "centos": ["yum", "dnf"],
+        "redhat": ["yum", "dnf"],
+    }
+
+    for path in [Path("/etc/os-release"), Path("/etc/system-release")]:
+        if path.is_file():
+            try:
+                with path.open() as f:
+                    content = f.read().lower()
+                for distro, managers in distro_pm.items():
+                    if distro in content:
+                        for pm in managers:
+                            if shutil.which(pm):
+                                return pm
+            # TODO: Handle specific exceptions (e.g., FileNotFoundError, PermissionError) instead of catching all
+            except Exception:
+                continue
+    # Fallback: check for any known package manager
+    for pm in ["pacman", "paru", "yay", "apt", "dnf", "yum"]:
+        if shutil.which(pm):
+            return pm
+    return None
