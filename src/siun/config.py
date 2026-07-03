@@ -20,7 +20,7 @@ from siun.models import (
     V2Threshold,
 )
 from siun.notification import UpdateNotification
-from siun.providers import UPDATE_PROVIDER_REGISTRY, UpdateProvider, UpdateProviderPacman
+from siun.providers import UPDATE_PROVIDER_REGISTRY, UpdateProvider
 from siun.util import get_default_config_dir, get_default_state_dir, is_path_world_writable
 
 
@@ -44,7 +44,9 @@ def get_default_criteria() -> list[V2Criterion]:
 
 def get_default_update_providers() -> list[UpdateProvider]:
     """Get default update providers."""
-    return [UpdateProviderPacman()]
+    from siun.cli_utils import guess_update_providers
+
+    return guess_update_providers()
 
 
 class SiunConfig(BaseModel):
@@ -115,7 +117,7 @@ class SiunConfig(BaseModel):
 
     @field_validator("v2_criteria")
     def transform_criteria(cls, value: list[V2Criterion]) -> list[V2Criterion]:
-        """Transform criteria to subclasses of V2Criterion."""
+        """Transform criteria to sub classes of V2Criterion."""
         registry = CRITERION_REGISTRY
         custom_cls = CriterionCustom
         return [(registry.get(crit.name) or custom_cls)(**crit.model_dump(exclude={"name_short"})) for crit in value]
@@ -136,7 +138,7 @@ class SiunConfig(BaseModel):
 
     @field_validator("update_providers")
     def transform_update_providers(cls, value: list[UpdateProvider]) -> list[UpdateProvider]:
-        """Transform update provider to subclasses of UpdateProvider."""
+        """Transform update provider to sub classes of UpdateProvider."""
         registry = UPDATE_PROVIDER_REGISTRY
         transformed_value: list[UpdateProvider] = []
         for provider in value:

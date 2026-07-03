@@ -10,6 +10,7 @@ import pytest
 from siun.config import get_config
 from siun.errors import ConfigError
 from siun.models import ClickColor
+from tests.conftest import mock_guess_update_providers
 
 CONFIG_MISSING_WEIGHTS = """
 [[v2_criteria]]
@@ -117,6 +118,7 @@ def mock_read_config(_):
 class TestConfig:
     """Test Config class."""
 
+    @mock.patch("siun.cli_utils.guess_update_providers", mock_guess_update_providers)
     @mock.patch("siun.config._read_config", mock_read_config)
     def test_default_config(self, default_config, default_update_providers):
         """Test empty user config."""

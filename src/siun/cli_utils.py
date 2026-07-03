@@ -1,7 +1,6 @@
 """CLI utils."""
 
 import json
-import shutil
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -10,11 +9,13 @@ import click
 
 from siun.config import SiunConfig, get_config
 from siun.criteria import SiunCriterion
+from siun.distro_map import DISTRO_MAP
 from siun.errors import (
     ConfigError,
     SiunCLIError,
 )
 from siun.models.criteria import V2Criterion
+from siun.providers import UpdateProvider
 
 
 def common_options(f: Callable[..., Any]) -> Callable[..., Any]:
@@ -76,34 +77,30 @@ def print_criteria(
         click.echo(f"  {name}")
 
 
-def guess_package_manager():
-    """Guess the package manager based on distro information and available binaries."""
-    # TODO: Extend + sort by popularity and usage frequency
-    distro_pm = {
-        "arch": ["pacman", "paru", "yay"],
-        "manjaro": ["pacman", "paru", "yay"],
-        "ubuntu": ["apt"],
-        "debian": ["apt"],
-        "fedora": ["dnf", "yum"],
-        "centos": ["yum", "dnf"],
-        "redhat": ["yum", "dnf"],
-    }
+def guess_update_providers() -> list[UpdateProvider]:
+    """
+    Guess the package manager and return the correct UpdateProviders.
 
-    for path in [Path("/etc/os-release"), Path("/etc/system-release")]:
-        if path.is_file():
-            try:
-                with path.open() as f:
-                    content = f.read().lower()
-                for distro, managers in distro_pm.items():
-                    if distro in content:
-                        for pm in managers:
-                            if shutil.which(pm):
-                                return pm
-            # TODO: Handle specific exceptions (e.g., FileNotFoundError, PermissionError) instead of catching all
-            except Exception:
-                continue
-    # Fallback: check for any known package manager
-    for pm in ["pacman", "paru", "yay", "apt", "dnf", "yum"]:
-        if shutil.which(pm):
-            return pm
+    Guess is based on distro.
+    """
+    # TODO: UpdateProviders look for available commands, but what if none of
+    # them are available? I guess it's okay to fail in this case. **Test this**.
+
+    content = _get_os_release_content([Path("/etc/os-release"), Path("/etc/system-release")])
+    if content:
+        for distro, providers in DISTRO_MAP.items():
+            if distro in content:
+                return [provider() for provider in providers]  # ty: ignore[missing-argument]
+    return []
+
+
+def _get_os_release_content(paths: list[Path]) -> str | None:
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            with path.open() as f:
+                return f.read().lower()
+        except OSError:
+            continue
     return None

@@ -29,6 +29,11 @@ class DummyProvider(UpdateProvider):
         return []
 
 
+def mock_guess_update_providers():
+    """Mock guessed update providers."""
+    return [UpdateProviderPacman()]
+
+
 @pytest.fixture(scope="module")
 def default_update_providers():
     """Provide default update provider."""

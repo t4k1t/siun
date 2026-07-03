@@ -13,6 +13,7 @@ from siun.cli import check, get_updates
 from siun.errors import ConfigError, SiunGetUpdatesError
 from siun.models import CriterionAvailable, CriterionCount, PackageUpdate
 from siun.state import UpdateProvider, Updates, get_merged_criteria
+from tests.conftest import mock_guess_update_providers
 
 EMPTY_STATE = Updates(
     available_updates=[],
@@ -249,6 +250,7 @@ class TestCheckCommand:
         assert result.exit_code == 0
         assert result.output == "Updates available: package\n"
 
+    @mock.patch("siun.cli_utils.guess_update_providers", mock_guess_update_providers)
     @mock.patch("siun.cli.Updates.persist_state")
     @mock.patch("siun.check.load_state", return_value=False)
     @mock.patch(
