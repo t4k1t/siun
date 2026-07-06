@@ -10,4 +10,5 @@ DISTRO_MAP: dict[str, list[type[UpdateProvider]]] = {
     "fedora": [],  # No UpdateProvider for dnf/yum implemented
     "centos": [],
     "redhat": [],
+    "rhel": [],
 }

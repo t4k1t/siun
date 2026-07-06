@@ -86,21 +86,47 @@ def guess_update_providers() -> list[UpdateProvider]:
     # TODO: UpdateProviders look for available commands, but what if none of
     # them are available? I guess it's okay to fail in this case. **Test this**.
 
-    content = _get_os_release_content([Path("/etc/os-release"), Path("/etc/system-release")])
-    if content:
-        for distro, providers in DISTRO_MAP.items():
-            if distro in content:
-                return [provider() for provider in providers]  # ty: ignore[missing-argument]
+    paths = [Path("/etc/os-release"), Path("/etc/system-release")]
+    for path in paths:
+        content = _get_os_release_content(path)
+        if not content:
+            continue
+
+        for distro in _extract_distro_candidates(content):
+            providers = DISTRO_MAP.get(distro)
+            if providers is not None:
+                return [provider() for provider in providers]
+
     return []
 
 
-def _get_os_release_content(paths: list[Path]) -> str | None:
-    for path in paths:
-        if not path.is_file():
+def _extract_distro_candidates(content: str) -> list[str]:
+    candidates: list[str] = []
+
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
             continue
-        try:
-            with path.open() as f:
-                return f.read().lower()
-        except OSError:
-            continue
-    return None
+
+        key, value = line.split("=", maxsplit=1)
+        key = key.strip().upper()
+        value = value.strip().strip('"').strip("'").lower()
+
+        if key == "ID" and value:
+            candidates.append(value)
+
+        if key == "ID_LIKE" and value:
+            candidates.extend(value.split())
+
+    return list(dict.fromkeys(candidates))
+
+
+def _get_os_release_content(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+
+    try:
+        with path.open() as f:
+            return f.read()
+    except OSError:
+        return None
