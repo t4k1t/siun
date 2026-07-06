@@ -172,6 +172,39 @@ class TestCheckCommand:
     @mock.patch("siun.check.load_state")
     @mock.patch(
         "siun.providers.UpdateProviderPacman.fetch_updates",
+        return_value=[],
+    )
+    @mock.patch(
+        "siun.cli_utils.get_config",
+        side_effect=ConfigError(
+            "unable to guess default update providers for this system. "
+            "Please configure at least one '[[update_providers]]' entry in your config file",
+            config_path=Path("/path/to/siun.toml"),
+        ),
+    )
+    def test_check_fails_with_custom_config_path_when_providers_cannot_be_guessed(
+        self, mock_get_config, mockfetch_available_updates, mock_read_state, mock_persist_state, default_config
+    ):
+        """Test check command forwards custom config path in config errors."""
+        runner = CliRunner()
+        with tempfile.NamedTemporaryFile(mode="r") as config_path:
+            mock_get_config.side_effect = ConfigError(
+                "unable to guess default update providers for this system. "
+                "Please configure at least one '[[update_providers]]' entry in your config file",
+                config_path=Path(config_path.name),
+            )
+            result = runner.invoke(check, ["-C", config_path.name])
+
+        mock_read_state.assert_not_called()
+        mock_persist_state.assert_not_called()
+        mockfetch_available_updates.assert_not_called()
+        assert result.exit_code == 1
+        assert f"config path: {config_path.name}" in result.output
+
+    @mock.patch("siun.cli.Updates.persist_state")
+    @mock.patch("siun.check.load_state")
+    @mock.patch(
+        "siun.providers.UpdateProviderPacman.fetch_updates",
         return_value=[PackageUpdate(name="package", provider="pacman")],
     )
     @mock.patch("siun.cli_utils.get_config")

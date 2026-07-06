@@ -94,7 +94,7 @@ def guess_update_providers() -> list[UpdateProvider]:
 
         for distro in _extract_distro_candidates(content):
             providers = DISTRO_MAP.get(distro)
-            if providers is not None:
+            if providers:
                 return [provider() for provider in providers]
 
     return []

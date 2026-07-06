@@ -114,11 +114,17 @@ def mock_read_config(_):
     return tomllib.loads("")
 
 
+@pytest.fixture(autouse=True)
+def patch_guess_update_providers():
+    """Mock guessed update providers for deterministic config tests."""
+    with mock.patch("siun.cli_utils.guess_update_providers", mock_guess_update_providers):
+        yield
+
+
 @pytest.mark.usefixtures("patch_is_path_world_writable")
 class TestConfig:
     """Test Config class."""
 
-    @mock.patch("siun.cli_utils.guess_update_providers", mock_guess_update_providers)
     @mock.patch("siun.config._read_config", mock_read_config)
     def test_default_config(self, default_config, default_update_providers):
         """Test empty user config."""
@@ -130,6 +136,31 @@ class TestConfig:
 
         assert config == default_config
         assert config.update_providers == default_update_providers
+
+    @pytest.mark.parametrize(
+        ("config_path", "expected_config_path"),
+        [
+            (None, Path("/tmp/siun-tests/.config/siun/config.toml")),
+            (Path("/tmp/custom-siun.toml"), Path("/tmp/custom-siun.toml")),
+        ],
+    )
+    @mock.patch("siun.cli_utils.guess_update_providers", return_value=[])
+    @mock.patch("siun.config._read_config", mock_read_config)
+    @mock.patch("siun.config.get_default_config_dir", return_value=Path("/tmp/siun-tests/.config/siun"))
+    def test_default_config_without_guessed_providers(
+        self, mock_default_config_dir, mock_guess_update_providers, config_path, expected_config_path
+    ):
+        """Test empty user config on unsupported distros."""
+        with (
+            mock.patch("pathlib.Path.exists", return_value=True),
+            mock.patch("pathlib.Path.is_file", return_value=True),
+            pytest.raises(ConfigError) as exc_info,
+        ):
+            get_config(config_path)
+
+        assert exc_info.value.config_path == expected_config_path
+        assert "unable to guess default update providers" in str(exc_info.value)
+        assert "[[update_providers]]" in str(exc_info.value)
 
     @mock.patch("siun.config._read_config", return_value=tomllib.loads(CONFIG_MISSING_WEIGHTS))
     def test_missing_weights(self, mock_read_config):
@@ -167,6 +198,8 @@ class TestConfig:
             mock.patch("pathlib.Path.exists", return_value=True),
             mock.patch("pathlib.Path.is_file", return_value=True),
         ):
+            environ["HOME"] = "/tmp/siun-tests"  # noqa: S108
+            environ["XDG_CONFIG_HOME"] = "/tmp/siun-tests/config"  # noqa: S108
             environ["XDG_STATE_HOME"] = "/tmp/siun-tests/state"  # noqa: S108
             config = get_config()
 

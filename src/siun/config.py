@@ -115,6 +115,18 @@ class SiunConfig(BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def must_have_update_providers(self) -> Self:
+        """Ensure at least one update provider is configured."""
+        if not self.update_providers:
+            message = (
+                "unable to guess default update providers for this system. "
+                "Please configure at least one '[[update_providers]]' entry in your config file"
+            )
+            raise ValueError(message)
+
+        return self
+
     @field_validator("v2_criteria")
     def transform_criteria(cls, value: list[V2Criterion]) -> list[V2Criterion]:
         """Transform criteria to sub classes of V2Criterion."""
