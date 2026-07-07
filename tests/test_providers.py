@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from siun.errors import UpdateProviderError
 from siun.models import PackageUpdate
-from siun.providers import UpdateProvider, UpdateProviderGeneric, UpdateProviderPacman
+from siun.providers import UpdateProvider, UpdateProviderFlatpak, UpdateProviderGeneric, UpdateProviderPacman
 
 
 class TestUpdateProviderBase:
@@ -101,3 +101,85 @@ class TestUpdateProviderGeneric:
         assert available_updates == [
             PackageUpdate(name="siun", new_version="2.7.18", old_version=None, provider="generic")
         ]
+
+
+class TestUpdateProviderFlatpak:
+    """Test UpdateProviderFlatpak."""
+
+    @mock.patch("siun.providers.flatpak.UpdateProviderFlatpak.pick_cmd")
+    @mock.patch("subprocess.run")
+    def test_fetch_updates_join_versions(self, mock_run, mock_pick_cmd):
+        """Join installed and remote update versions by ref."""
+        mock_pick_cmd.side_effect = [
+            ["flatpak", "list", "--columns=ref,version"],
+            ["flatpak", "remote-ls", "--updates", "--columns=ref,name,version,branch,commit"],
+        ]
+        mock_run.side_effect = [
+            mock.Mock(stdout="app/org.gnome.App/x86_64/stable\t1.0\n", returncode=0),
+            mock.Mock(stdout="app/org.gnome.App/x86_64/stable\tGNOME App\t1.1\tstable\tabcd\n", returncode=0),
+        ]
+
+        provider = UpdateProviderFlatpak()
+        available_updates = provider.fetch_updates()
+
+        assert available_updates == [
+            PackageUpdate(name="GNOME App", old_version="1.0", new_version="1.1", provider="flatpak")
+        ]
+
+    @mock.patch("siun.providers.flatpak.UpdateProviderFlatpak.pick_cmd")
+    @mock.patch("subprocess.run")
+    def test_fetch_updates_missing_installed_entry(self, mock_run, mock_pick_cmd):
+        """Allow updates without matching installed version rows."""
+        mock_pick_cmd.side_effect = [
+            ["flatpak", "list", "--columns=ref,version"],
+            ["flatpak", "remote-ls", "--updates", "--columns=ref,name,version,branch,commit"],
+        ]
+        mock_run.side_effect = [
+            mock.Mock(stdout="", returncode=0),
+            mock.Mock(stdout="app/org.gnome.App/x86_64/stable\tGNOME App\t1.1\tstable\tabcd\n", returncode=0),
+        ]
+
+        provider = UpdateProviderFlatpak()
+        available_updates = provider.fetch_updates()
+
+        assert available_updates == [
+            PackageUpdate(name="GNOME App", old_version=None, new_version="1.1", provider="flatpak")
+        ]
+
+    @mock.patch("siun.providers.flatpak.UpdateProviderFlatpak.pick_cmd")
+    @mock.patch("subprocess.run")
+    def test_fetch_updates_fallback_to_branch_or_commit(self, mock_run, mock_pick_cmd):
+        """Fallback to branch or commit when remote version is missing."""
+        mock_pick_cmd.side_effect = [
+            ["flatpak", "list", "--columns=ref,version"],
+            ["flatpak", "remote-ls", "--updates", "--columns=ref,name,version,branch,commit"],
+        ]
+        mock_run.side_effect = [
+            mock.Mock(stdout="app/org.gnome.App/x86_64/stable\t1.0\n", returncode=0),
+            mock.Mock(stdout="app/org.gnome.App/x86_64/stable\tGNOME App\t\tstable\tabcd\n", returncode=0),
+        ]
+
+        provider = UpdateProviderFlatpak()
+        available_updates = provider.fetch_updates()
+
+        assert available_updates == [
+            PackageUpdate(name="GNOME App", old_version="1.0", new_version="stable", provider="flatpak")
+        ]
+
+    def test_parse_updates_fails_on_invalid_installed_row(self):
+        """Raise on malformed flatpak list output."""
+        provider = UpdateProviderFlatpak()
+
+        with pytest.raises(UpdateProviderError) as excinfo:
+            provider._parse_installed_versions(["bad-row"])
+
+        assert "failed to parse output: bad-row" in str(excinfo.value)
+
+    def test_parse_updates_fails_on_invalid_remote_row(self):
+        """Raise on malformed flatpak remote-ls output."""
+        provider = UpdateProviderFlatpak()
+
+        with pytest.raises(UpdateProviderError) as excinfo:
+            provider._parse_available_updates(["bad-row"])
+
+        assert "failed to parse output: bad-row" in str(excinfo.value)

@@ -42,6 +42,7 @@ def get_default_criteria() -> list[V2Criterion]:
     ]
 
 
+# TODO: Update changelog + docs
 def get_default_update_providers() -> list[UpdateProvider]:
     """Get default update providers."""
     from siun.cli_utils import guess_update_providers
