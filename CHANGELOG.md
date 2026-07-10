@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved default update provider guessing by parsing `ID` and `ID_LIKE` from `/etc/os-release` with fallback to `/etc/system-release`.
 - Improved Flatpak update parsing to join installed and available updates by ref and report better version details.
 - `siun` now fails configuration validation when no update providers can be guessed or configured, with an explicit `[[update_providers]]` hint.
+- Updated dependencies.
 
 ## [2.1.0] - 2026-06-11
 
