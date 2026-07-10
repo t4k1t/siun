@@ -38,7 +38,7 @@ _siun_ reads its configuration from a file in one of the following locations (ch
 2. _$HOME/.config/siun/config.toml_
 3. _/.config/siun/config.toml_ (if HOME is not set)
 
-On Arch Linux, or any other system that uses **pacman**, _siun_ will be able to run without any configuration. However, to make the most of the tools provided, it is highly recommended to customize at least the criteria settings. See _siun_(5) for details on configuration options.
+_siun_ tries to auto-detect suitable update providers from distro metadata (**ID** and **ID_LIKE** in _/etc/os-release_, with fallback to _/etc/system-release_). If no providers can be guessed, configure at least one **[[update_providers]]** entry manually. See _siun_(5) for details on configuration options.
 
 # BUGS
 

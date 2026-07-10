@@ -47,8 +47,21 @@ Only relevant for _siun-check_(1).
 Configure source of available updates. Each provider has at least a **name** by which it can be identified, but may have additional settings.
 
 **pacman**
-: Default update provider for Arch Linux based distributions. Uses _pacman_(8) to fetch list of available updates.
+: Update provider for pacman/checkupdates style output. Commonly auto-selected on Arch based distributions.
 No additional settings.
+
+**aur**
+: Update provider for AUR helper output (e.g. _aur-check-updates_ or _paru --aur -Qu_). Commonly auto-selected on Arch based distributions.
+No additional settings.
+
+**flatpak**
+
+: Update provider for Flatpak updates.
+Additional settings:
+
+    **list_apps**: Include application updates. Optional, defaults to **true**.
+
+    **list_runtimes**: Include runtime updates. Optional, defaults to **true**.
 
 **generic**
 
@@ -57,9 +70,11 @@ Additional settings:
 
     **cmd**: Shell command to fetch available updates. Output is expected to be one line per update. **Required**.
 
-    **pattern**: Python regular expression to extract update information from **cmd**  output. Uses named groups to designate the following attributes: name, old_version, new_version. Only the name group is required. For example, here is a simple pattern matching updates with only characters in the name and numbers and dots in the version strings:
+    **pattern**: Python regular expression to extract update information from **cmd** output. Uses named groups to designate the following attributes: name, old_version, new_version. Only the name group is required. For example, here is a simple pattern matching updates with only characters in the name and numbers and dots in the version strings:
 
-       ```^(?P<name>[a-z]+)\s+(?P<old_version>[\.0-9]+)\s+\-\>\s+(?P<new_version>[\.0-9\+]+)$``` 
+        ```^(?P<name>[a-z]+)\s+(?P<old_version>[\.0-9]+)\s+\-\>\s+(?P<new_version>[\.0-9\+]+)$``` 
+
+If no provider is configured explicitly, _siun_(1) tries to guess providers from distro metadata (**ID** and **ID_LIKE** fields in _/etc/os-release_, with fallback to _/etc/system-release_). If no matching providers can be guessed, configuration is considered invalid until at least one **[[update_providers]]** entry is configured.
 
 # V2-CRITERIA
 

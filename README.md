@@ -16,13 +16,15 @@ By calculating an urgency score, `siun` aims to help sysadmins decide how import
 
 ## Usage
 
-On Arch Linux, or any other system that uses `pacman`, the most basic way to use `siun` is to simply run the `check` command:
+On many distributions, the most basic way to use `siun` is to simply run the `check` command:
 
 ```bash
 siun check
 ```
 
-Any other OS/distribution will require some [Configuration](#configuration) first.
+`siun` tries to auto-detect suitable update providers from distro metadata (`ID` and `ID_LIKE` in `/etc/os-release`, with fallback to `/etc/system-release`).
+
+If no provider can be guessed for your system, configure at least one `[[update_providers]]` entry first. See [Update Providers](#update-providers).
 
 ### Check Command
 
@@ -165,15 +167,25 @@ Update providers tell `siun` how to fetch the list of packages with available up
 
 > ℹ️ If you can't find a provider for your package manager of choice, you can always try to set up the `generic` provider instead.
 
-#### Default Provider: pacman
+#### Default Providers (Auto-Guessed)
 
-By default, `siun` is configured to use the `pacman` update provider. This provider automatically runs `pacman -Qu` and parses its output, so no extra configuration is needed for most Arch Linux systems. If you use Arch or a compatible distribution, you can simply install and run `siun` without changing the provider.
+By default, `siun` tries to guess update providers from distro metadata in `/etc/os-release` (and `/etc/system-release` as fallback). It evaluates `ID` first and then `ID_LIKE` values.
 
-Example default configuration:
+For Arch-like systems, this usually resolves to:
+
+- `aur`
+- `pacman`
+
+Example explicit configuration:
 ```toml
+[[update_providers]]
+name = "aur"
+
 [[update_providers]]
 name = "pacman"
 ```
+
+If no matching built-in providers are found for your distro, `siun` exits with a config error and asks you to configure at least one `[[update_providers]]` entry.
 
 #### Custom Provider: generic
 
@@ -199,9 +211,25 @@ pattern = "(?P<name>.+)"
 
 If your update command outputs more details (like version numbers), you can adjust the `pattern` to extract those fields. See the [examples/config.toml](examples/config.toml) for more advanced patterns.
 
+#### Flatpak Provider
+
+The `flatpak` provider checks Flatpak updates and includes installed version data where available.
+
+Example configuration:
+```toml
+[[update_providers]]
+name = "flatpak"
+list_apps = true
+list_runtimes = true
+```
+
+- `list_apps`: Include app updates (default: `true`)
+- `list_runtimes`: Include runtime updates (default: `true`)
+
 #### Choosing a Provider
 
-- **Arch Linux users:** The `pacman` provider is recommended and enabled by default.
+- **Arch Linux users:** Keep auto-guessed defaults (`aur` + `pacman`) or configure them explicitly.
+- **Flatpak users:** Add the `flatpak` provider, optionally filtering apps/runtimes.
 - **Other distributions:** Use the `generic` provider and set `cmd` to your update command.
 
 After configuring, run `siun check` to verify your setup.
@@ -219,27 +247,34 @@ After configuring, run `siun check` to verify your setup.
 
 It is recommended to set up some kind of automation for running `siun`. One possibility is to set up a `systemd` user unit & timer. Find `siun.service` and `siun.timer` in [examples/systemd](examples/systemd) for examples of such.
 
-Since `siun` is supposed be able to run on most Arch Linux installations, it only calls `pacman` to check for package updates by default. This has the obvious drawback that it will only show updates if the local `pacman` database has been synced recently. There are multiple options to solve this:
+When using the `pacman` provider, update checks rely on local pacman sync state. This has the obvious drawback that updates may not be shown if the local `pacman` database has not been synced recently. There are multiple options to solve this:
 
 #### checkupdates
 
-The first, and recommended, option is to use the `checkupdates` script. It is available in the `pacman-contrib` package. Once it's installed, simply update the configuration like so:
+The first, and recommended, option is to use the `checkupdates` script. It is available in the `pacman-contrib` package. Once it's installed, configure `siun` to use the `generic` provider:
 
 ```toml
-cmd_available = "checkupdates --nocolor | cut -d ' ' -f1"
+[[update_providers]]
+name = "generic"
+cmd = ["checkupdates", "--nocolor"]
+pattern = "(?P<name>.+)"
 ```
 
 *NOTE: The pipe to `cut` can be removed to also get a diff of version numbers - but for basic operation this is not required*
 
-`checkupdates` can be combined with [`aur-check-updates`](https://aur.archlinux.org/packages/aur-check-updates) in order to also take AUR packages into account:
+`checkupdates` can be combined with [`aur-check-updates`](https://aur.archlinux.org/packages/aur-check-updates) by using both built-in providers:
 
 ```toml
-cmd_available = "{ checkupdates --nocolor; aur-check-updates -n --raw; } | cut -d ' ' -f1"
+[[update_providers]]
+name = "aur"
+
+[[update_providers]]
+name = "pacman"
 ```
 
 #### Systemd Unit & Timer
 
-Since the default configuration gets the list of available package updates from `pacman` without syncing, it might be useful to define a system unit & timer which automatically updates the local `pacman` database. Find `pacman-sync.service` and `pacman-sync.timer` in [examples/systemd](examples/systemd) for examples of such.
+If you use the `pacman` provider, it might be useful to define a system unit & timer which automatically updates the local `pacman` database. Find `pacman-sync.service` and `pacman-sync.timer` in [examples/systemd](examples/systemd) for examples of such.
 
 *NOTE: When using the pacman-sync unit it might be tempting to not sync the pacman database on updating packages since the service will sync every day anyway. However, this is a bad idea. See the [Arch Linux Wiki](https://wiki.archlinux.org/title/System_maintenance#Partial_upgrades_are_unsupported) for more information on this. A safer way to make sure package update information is up to date is to use the [`checkupdates`](#checkupdates) script*
 

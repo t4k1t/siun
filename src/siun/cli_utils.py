@@ -100,6 +100,7 @@ def guess_update_providers() -> list[UpdateProvider]:
     return []
 
 
+# TODO: Add providers for yum, dnf, apt
 def _extract_distro_candidates(content: str) -> list[str]:
     candidates: list[str] = []
 

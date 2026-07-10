@@ -14,6 +14,8 @@ siun-check - Fetch list of available updates (unless chached) and report on urge
 
 Fetch list of available updates, apply configured criteria and print calculated urgency score. See _siun_(5) for criteria configuration.
 
+Update providers are read from configuration and may be auto-detected from distro metadata. See _siun_(5) for update provider configuration details.
+
 # OPTIONS
 
 **-h**, **\--help**
