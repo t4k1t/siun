@@ -213,7 +213,7 @@ class TestConfig:
 
         assert "failed to open config file" in str(exc_info.value)
 
-    @mock.patch("siun.config._read_config", side_effect=tomllib.TOMLDecodeError)
+    @mock.patch("siun.config._read_config", side_effect=tomllib.TOMLDecodeError("mock error", "x", 0))
     def test_toml_error(self, default_config):
         """Test handling of TOMLDecodeError."""
         with mock.patch("siun.config.get_default_config_dir"), pytest.raises(ConfigError) as exc_info:  # noqa: PT011
