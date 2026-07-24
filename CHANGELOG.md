@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `siun` now fails configuration validation when no update providers can be guessed or configured, with an explicit `[[update_providers]]` hint.
 - Updated dependencies.
 
+### Fixed
+
+- Fixed parsing issue for `flatpak` update provider.
+
 ## [2.1.0] - 2026-06-11
 
 ### Added

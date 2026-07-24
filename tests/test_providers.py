@@ -171,15 +171,41 @@ class TestUpdateProviderFlatpak:
         provider = UpdateProviderFlatpak()
 
         with pytest.raises(UpdateProviderError) as excinfo:
-            provider._parse_installed_versions(["bad-row"])
+            provider._parse_installed_versions(["b\t a\t d\t r\t o\t w\t"])
 
-        assert "failed to parse output: bad-row" in str(excinfo.value)
+        assert "failed to parse output: b\t a\t d\t r\t o\t w\t" in str(excinfo.value)
 
     def test_parse_updates_fails_on_invalid_remote_row(self):
         """Raise on malformed flatpak remote-ls output."""
         provider = UpdateProviderFlatpak()
 
         with pytest.raises(UpdateProviderError) as excinfo:
-            provider._parse_available_updates(["bad-row"])
+            provider._parse_available_updates(["b\t a\t d\t r\t o\t w\t"])
 
-        assert "failed to parse output: bad-row" in str(excinfo.value)
+        assert "failed to parse output: b\t a\t d\t r\t o\t w\t" in str(excinfo.value)
+
+    def test_parse_installed_versions_accepts_ref_only_row(self):
+        """Allow installed rows with ref and missing version."""
+        provider = UpdateProviderFlatpak()
+
+        installed_versions = provider._parse_installed_versions(["app/org.gnome.App/x86_64/stable"])
+
+        assert installed_versions == {}
+
+    def test_parse_available_updates_accepts_ref_only_row(self):
+        """Allow remote rows with ref only and infer branch from ref."""
+        provider = UpdateProviderFlatpak()
+
+        available_updates = provider._parse_available_updates(
+            ["org.freedesktop.Platform.codecs-extra/x86_64/25.08-extra"]
+        )
+
+        assert available_updates == [
+            {
+                "ref": "org.freedesktop.Platform.codecs-extra/x86_64/25.08-extra",
+                "name": "",
+                "version": "",
+                "branch": "25.08-extra",
+                "commit": "",
+            }
+        ]

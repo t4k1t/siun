@@ -69,15 +69,28 @@ class UpdateProviderFlatpak(UpdateProvider):
             message = f"unexpected error: {error}"
             raise UpdateProviderError(message, self.name) from error
 
+    def _split_line(self, *, line: str, num_fields: int) -> list[str]:
+        fields = line.split("\t")
+        print(fields)
+        if len(fields) > num_fields:
+            message = f"failed to parse output: {line}"
+            raise UpdateProviderError(message, self.name)
+
+        return fields
+
     def _parse_installed_versions(self, lines: list[str]) -> dict[str, str]:
         installed_versions: dict[str, str] = {}
         for line in lines:
-            fields = line.split("\t")
-            if len(fields) != 2:
+            if not line.strip():
+                continue
+
+            fields = self._split_line(line=line, num_fields=2)
+            ref = fields[0]
+            version = fields[1] if len(fields) == 2 else ""
+            if not ref:
                 message = f"failed to parse output: {line}"
                 raise UpdateProviderError(message, self.name)
 
-            ref, version = fields
             if version:
                 installed_versions[ref] = version
 
@@ -86,12 +99,21 @@ class UpdateProviderFlatpak(UpdateProvider):
     def _parse_available_updates(self, lines: list[str]) -> list[dict[str, str]]:
         available_updates: list[dict[str, str]] = []
         for line in lines:
-            fields = line.split("\t")
-            if len(fields) != 5:
+            if not line.strip():
+                continue
+
+            fields = self._split_line(line=line, num_fields=5)
+            fields += [""] * (5 - len(fields))
+            ref, name, version, branch, commit = fields
+            if not ref:
                 message = f"failed to parse output: {line}"
                 raise UpdateProviderError(message, self.name)
 
-            ref, name, version, branch, commit = fields
+            if not branch:
+                ref_parts = ref.rsplit("/", 1)
+                if len(ref_parts) == 2:
+                    branch = ref_parts[1]
+
             available_updates.append(
                 {
                     "ref": ref,
