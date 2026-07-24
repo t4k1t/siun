@@ -71,7 +71,6 @@ class UpdateProviderFlatpak(UpdateProvider):
 
     def _split_line(self, *, line: str, num_fields: int) -> list[str]:
         fields = line.split("\t")
-        print(fields)
         if len(fields) > num_fields:
             message = f"failed to parse output: {line}"
             raise UpdateProviderError(message, self.name)
