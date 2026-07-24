@@ -3,15 +3,15 @@ alias ta := testall
 
 # Run unit tests with coverage generation
 @test *FLAGS:
-    uv run coverage run -m pytest -m "not feature_notification and not feature_news" {{FLAGS}}
+    uv run --frozen coverage run -m pytest -m "not feature_notification and not feature_news" {{FLAGS}}
 
 # Run unit tests, including optional features with coverage generation
 @testall:
-    uv run coverage run -m pytest
+    uv run --frozen coverage run -m pytest
 
 # Generate coverage report
 @coverage REPORT_TYPE='report':
-    uv run coverage {{REPORT_TYPE}}
+    uv run --frozen coverage {{REPORT_TYPE}}
 
 # Lint source
 @lint:
