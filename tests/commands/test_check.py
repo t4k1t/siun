@@ -31,6 +31,7 @@ DEFAULT_LIST_CRITERIA_OUTPUT = """Configured criteria:
   builtin   available                      {"name": "available", "short_name": null, "weight": 1, "name_short": "av"}
   builtin   count                          {"name": "count", "short_name": null, "weight": 1, "count": 15, "name_short": "co"}
   builtin   pattern                        {"name": "pattern", "short_name": null, "weight": 1, "pattern": "^archlinux-keyring$|^linux$|^pacman.*$", "name_short": "pa"}
+  builtin   archaudit                      -
 
 Available criteria:
   archaudit

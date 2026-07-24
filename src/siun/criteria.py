@@ -51,6 +51,7 @@ class CriterionArchaudit(SiunCriterion):
             check=True,
             capture_output=True,
             text=True,
+            shell=False,
         )
         audit_packages = arch_audit_run.stdout.splitlines()
 

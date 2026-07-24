@@ -9,7 +9,7 @@ from unittest import mock
 import pytest
 
 from siun.errors import CriterionError
-from siun.models import CriterionCustom, FormatObject, PackageUpdate, Updates
+from siun.models import CriterionArchaudit, CriterionCustom, FormatObject, PackageUpdate, Updates
 from siun.state import BUILTIN_CRITERIA, _load_user_criteria, get_merged_criteria, load_state
 from siun.util import get_default_criteria_dir
 
@@ -181,6 +181,20 @@ class TestUpdates:
         updates.evaluate(criteria=BUILTIN_CRITERIA, available_updates=[])
         assert updates.score == 0
         assert updates.match is None
+
+    @mock.patch("siun.criteria.subprocess.run")
+    def test_archaudit_builtin_criterion_is_loaded_and_evaluated(self, mock_run):
+        """Test builtin archaudit criterion is available and can be evaluated."""
+        mock_run.return_value = mock.Mock(stdout="linux\n", returncode=0)
+        criteria_settings = [CriterionArchaudit(name="archaudit", weight=1)]
+
+        criteria = get_merged_criteria(criteria_settings=criteria_settings)
+        assert "archaudit" in criteria
+
+        updates = Updates(criteria_settings=criteria_settings, thresholds=[])
+        updates.evaluate(criteria=criteria, available_updates=[PackageUpdate(name="linux", provider="pacman")])
+
+        assert "archaudit" in updates.matched_criteria
 
 
 class TestCustomCriteria:

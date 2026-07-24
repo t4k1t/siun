@@ -129,7 +129,7 @@ class SiunConfig(BaseModel):
 
     @field_validator("v2_criteria")
     def transform_criteria(cls, value: list[V2Criterion]) -> list[V2Criterion]:
-        """Transform criteria to sub classes of V2Criterion."""
+        """Transform criteria to subclasses of V2Criterion."""
         registry = CRITERION_REGISTRY
         custom_cls = CriterionCustom
         return [(registry.get(crit.name) or custom_cls)(**crit.model_dump(exclude={"name_short"})) for crit in value]
@@ -150,7 +150,7 @@ class SiunConfig(BaseModel):
 
     @field_validator("update_providers")
     def transform_update_providers(cls, value: list[UpdateProvider]) -> list[UpdateProvider]:
-        """Transform update provider to sub classes of UpdateProvider."""
+        """Transform update provider to subclasses of UpdateProvider."""
         registry = UPDATE_PROVIDER_REGISTRY
         transformed_value: list[UpdateProvider] = []
         for provider in value:

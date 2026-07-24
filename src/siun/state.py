@@ -5,7 +5,7 @@ from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import Any
 
-from siun.criteria import CriterionAvailable, CriterionCount, CriterionPattern, SiunCriterion
+from siun.criteria import CriterionArchaudit, CriterionAvailable, CriterionCount, CriterionPattern, SiunCriterion
 from siun.errors import CriterionError
 from siun.models import CriterionT, PackageUpdate
 from siun.models.updates import Updates
@@ -16,6 +16,7 @@ BUILTIN_CRITERIA: dict[str, SiunCriterion] = {
     "available": CriterionAvailable(),
     "count": CriterionCount(),
     "pattern": CriterionPattern(),
+    "archaudit": CriterionArchaudit(),
 }
 EXPECTED_CLASS = "SiunCriterion"
 
