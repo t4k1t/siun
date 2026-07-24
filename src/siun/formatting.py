@@ -46,7 +46,7 @@ class Formatter:
     def format_custom(format_object: FormatObject, template_string: str) -> tuple[str, dict[Never, Never]]:
         """Build customised output format."""
         format_template = Template(template_string)
-        output = format_template.safe_substitute(**format_object.model_dump())
+        output = format_template.safe_substitute(**format_object.to_template_vars())
         return output, {}
 
 

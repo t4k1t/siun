@@ -88,6 +88,6 @@ class UpdateNotification(BaseModel):
     def fill_templates(self, format_object: "FormatObject"):
         """Fill template strings with format variables."""
         title_template = Template(self.title)
-        self.title = title_template.safe_substitute(**format_object.model_dump())
+        self.title = title_template.safe_substitute(**format_object.to_template_vars())
         message_template = Template(self.message)
-        self.message = message_template.safe_substitute(**format_object.model_dump())
+        self.message = message_template.safe_substitute(**format_object.to_template_vars())

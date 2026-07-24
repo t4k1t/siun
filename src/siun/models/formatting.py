@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass
 from enum import Enum
-
-from pydantic import BaseModel, Field
 
 
 class ClickColor(Enum):
@@ -29,7 +28,8 @@ class ClickColor(Enum):
     reset = "reset"
 
 
-class FormatObject(BaseModel):
+@dataclass()
+class FormatObject:
     """Objects for output formatting."""
 
     available_updates: str
@@ -39,6 +39,15 @@ class FormatObject(BaseModel):
     score: int
     status_text: str
     update_count: int
-    # Excluded fields won't be usable in custom format
-    state_color: str = Field(exclude=True)
-    state_name: str = Field(exclude=True)
+    state_color: str
+    state_name: str
+
+    def to_template_vars(self) -> dict[str, object]:
+        """Expose template vars only."""
+        data = asdict(self)
+
+        # Internal fields only
+        data.pop("state_color")
+        data.pop("state_name")
+
+        return data
