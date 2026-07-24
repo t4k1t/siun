@@ -12,6 +12,7 @@ from siun.criteria import SiunCriterion
 from siun.models.criteria import V2Criterion
 from siun.models.formatting import ClickColor, FormatObject
 from siun.models.thresholds import V2Threshold
+from siun.update_evaluator import UpdateEvaluator
 
 
 class PackageUpdate(BaseModel):
@@ -90,47 +91,13 @@ class Updates(BaseModel):
             available_updates = []
 
         self.available_updates = available_updates
-        self.matched_criteria = {}  # Reset matches
-
-        # Check criteria
-        for crit in self.criteria_settings:
-            if crit and crit.weight == 0:
-                continue  # Skip criteria with weight 0
-            try:
-                user_criteria_settings = crit.model_dump(exclude={"name", "short_name"})
-                if crit.name not in criteria:
-                    message = (
-                        f"Configured criterion '{crit.name}' was not loaded. "
-                        "Likely reasons:\n"
-                        "- Missing or misplaced criterion file\n"
-                        "- Criterion class missing or misnamed\n"
-                        "- 'is_fulfilled' method not implemented\n"
-                        "Check your criteria directory and configuration."
-                    )
-                    from siun.errors import CriterionError
-
-                    raise CriterionError(message, crit.name)
-                if criteria[crit.name].is_fulfilled(
-                    user_criteria_settings, [update.name for update in available_updates]
-                ):
-                    self.matched_criteria[crit.name] = user_criteria_settings
-            except Exception as error:
-                from siun.errors import CriterionError
-
-                crit_settings = crit.model_dump()
-                import traceback
-
-                tb = traceback.format_exc()
-                message = f"Criterion settings: {crit_settings}\nTraceback:\n{tb}"
-                raise CriterionError(message, crit.name) from error
-
-        for threshold in self.thresholds:
-            if self.score >= threshold.score:
-                self.match = threshold
-                break
-        else:
-            # Reset match if no thresholds matched
-            self.match = None
+        evaluator = UpdateEvaluator()
+        self.matched_criteria, self.match = evaluator.evaluate(
+            criteria_settings=self.criteria_settings,
+            thresholds=self.thresholds,
+            criteria=criteria,
+            available_updates=available_updates,
+        )
 
     def persist_state(self, state_file_path: Path) -> None:
         """Write state to disk."""
