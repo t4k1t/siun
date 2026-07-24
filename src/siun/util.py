@@ -15,7 +15,11 @@ def get_default_state_dir() -> Path:
     1. `$XDG_STATE_HOME/siun/state.json`
     2. `$HOME/.local/state/siun/state.json`
     """
-    return Path(environ.get("XDG_STATE_HOME", Path.home() / Path(".local/state"))) / Path("siun")
+    xdg_state_home = environ.get("XDG_STATE_HOME")
+    if xdg_state_home:
+        return Path(xdg_state_home) / Path("siun")
+
+    return Path.home() / Path(".local/state/siun")
 
 
 def get_default_config_dir() -> Path:
@@ -26,7 +30,11 @@ def get_default_config_dir() -> Path:
     1. `$XDG_CONFIG_HOME/siun`
     2. `$HOME/.config/siun`
     """
-    return Path(environ.get("XDG_CONFIG_HOME", Path.home() / Path(".config"))) / Path("siun")
+    xdg_config_home = environ.get("XDG_CONFIG_HOME")
+    if xdg_config_home:
+        return Path(xdg_config_home) / Path("siun")
+
+    return Path.home() / Path(".config/siun")
 
 
 def get_default_criteria_dir() -> Path:
