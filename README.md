@@ -6,9 +6,9 @@
 
 <img height="128" alt="siun Icon" src="assets/icon/siun-icon.png" align="left">
 
-Prioritize package updates that matter.
+Focus on updates that matter.
 
-By calculating an urgency score, `siun` aims to help sysadmins decide how important available updates really are and why. It supports various built-in criteria and allows users to implement their own criteria in Python.
+Prioritize package updates based on your own criteria or pick from built-in helpers. Built-in criteria include regex pattern matching, whether packages are reported by `archaudit`, or how long ago the last update was.
 
 -----
 
