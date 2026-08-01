@@ -14,6 +14,8 @@ Prioritize package updates based on your own criteria or pick from built-in help
 
 [Usage](#usage) • [Installation](#installation) • [Configuration](#configuration) • [License](#license) • [Name](#name)
 
+<img height="720" alt="siun gif" src="assets/siun-gif.gif" align="center">
+
 ## Usage
 
 On many distributions, the most basic way to use `siun` is to simply run the `check` command:
