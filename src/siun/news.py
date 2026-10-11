@@ -1,7 +1,7 @@
 """Module for feeds and news."""
 
 import calendar
-import datetime
+import datetime as dt
 import json
 from pathlib import Path
 
@@ -34,7 +34,7 @@ def parse_feed_entries(source: NewsProvider) -> tuple[str, list[NewsEntry]]:
         source.title = parsed_feed.feed.get("title", "No title")
     entries: list[NewsEntry] = []
     for entry in parsed_feed.entries[: source.max_items] or []:
-        entry_datetime = datetime.datetime.fromtimestamp(calendar.timegm(entry.published_parsed), tz=datetime.UTC)
+        entry_datetime = dt.datetime.fromtimestamp(calendar.timegm(entry.published_parsed), tz=dt.UTC)
         entries.append(
             NewsEntry(
                 title=entry.get("title", "Untitled"),

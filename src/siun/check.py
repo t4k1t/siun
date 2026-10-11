@@ -1,6 +1,6 @@
 """Module for checking for updates and evaluating criteria."""
 
-import datetime
+import datetime as dt
 from pathlib import Path
 
 from siun.criteria import SiunCriterion
@@ -45,8 +45,8 @@ def get_updates(
     criteria_dict: dict[str, SiunCriterion],
 ) -> Updates:
     """Get available updates and evaluate criteria."""
-    now = datetime.datetime.now(tz=datetime.UTC)
-    cache_min_age = datetime.timedelta(minutes=cache_min_age_minutes)
+    now = dt.datetime.now(tz=dt.UTC)
+    cache_min_age = dt.timedelta(minutes=cache_min_age_minutes)
 
     if no_cache:
         state = Updates(criteria_settings=criteria, thresholds=thresholds)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 from pathlib import Path
 from typing import Any
 
@@ -33,13 +33,13 @@ class Updates(BaseModel):
     thresholds: list[V2Threshold] = []
     available_updates: list[PackageUpdate] = []
     matched_criteria: dict[str, dict[str, Any]] = {}
-    last_update: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
+    last_update: dt.datetime = dt.datetime.now(tz=dt.UTC)
     match: V2Threshold | None = None
     last_match: V2Threshold | None = None
 
     def touch(self) -> None:
         """Set last_update to now."""
-        self.last_update = datetime.datetime.now(tz=datetime.UTC)
+        self.last_update = dt.datetime.now(tz=dt.UTC)
 
     @property
     def score(self) -> int:
